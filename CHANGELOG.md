@@ -4,6 +4,7 @@
 
 ### Added
 
+- **Calendar:** a new tab shows your shows' episodes and the best-rated new movies and series by date. Select a day to see its posters, filter releases by rating (Any, 7+, 8+, 9+), and press OK to open Details.
 - **Provider filters:** filter the source panel with All providers and individual provider chips. Provider names and audio-codec badges now appear on each source row.
 - **Cast and actor pages:** Details shows the cast; select an actor to see their biography and filmography, and hold OK on a title there to add it to or remove it from My List.
 - **Stremio My List import:** import missing movies and shows from the Trakt personal list in the profile editor. Existing entries stay unchanged.
@@ -13,8 +14,9 @@
 ### Improved
 
 - **Smoother Home scrolling:** row navigation renders about twice as fast on low-power boxes such as the Nokia Streaming Box 8010.
-- **My List loading:** the first 20 items appear before the rest of the list finishes loading.
-
+- **My List loading:** saved catalog details are reused after a restart, so My List shows cached items at once. Under the Recent sort the first items appear before the rest of the list loads; other sorts no longer reshuffle when it finishes. Home's My list row shows its first 12 items sooner.
+- **Faster poster grids:** My List and Home rows scroll more smoothly on low-power boxes, and posters already in memory appear in the first frame.
+- **Fewer TMDB requests:** each show's details are downloaded once, and Hide completed no longer downloads the seasons of shows whose latest episode is unwatched.
 - **Global source ranking:** sources from every provider share one ranked list. Language preferences and playback availability take priority, followed by decoding support, HDR, quality, seeders, and size.
 - **Availability tiers:** cached and direct sources stay preferred, while non-cached torrents with zero seeds drop below seeded sources and sources with unknown seeder counts.
 - **Source controls:** removed the redundant Spanish-only toggle; the profile preference still applies automatically.
@@ -22,6 +24,7 @@
 ### Fixed
 
 - Keep focus on the first ranked source when opening the panel, changing providers, or receiving a new top-ranked result.
+- On an actor page, pressing Up from the first row of the filmography scrolls back to the biography.
 
 ## [1.0.21] - 2026-11-11
 
