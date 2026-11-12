@@ -5,6 +5,14 @@ Franklix is a fork of https://github.com/grodri99/bambi.
 
 **This app is under heavy development. It can breaks!**
 
+## Disclaimer
+
+This project is provided for **educational and research purposes only**.
+
+By using this software, you are solely responsible for how you use it and for complying with all applicable laws and terms of service in your country.
+
+The author and contributors do **not** endorse or accept responsibility for any illegal, abusive, or unauthorized use.
+
 ## Screenshots
 
 Artwork is blurred in these screenshots.
@@ -21,7 +29,6 @@ Artwork is blurred in these screenshots.
 
 **Playback and sources**
 
-- AllDebrid as the default debrid service, plus Peerflix and Comet as optional providers.
 - One ranked source list across providers, with filters and configurable exclusions.
 - Format badges (HDR, Dolby Vision, codecs), automatic source failover, and optional frame-rate matching.
 - Full remote-control support and a Next episode button in the player.
