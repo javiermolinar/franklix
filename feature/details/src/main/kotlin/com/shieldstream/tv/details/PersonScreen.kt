@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -27,11 +28,17 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -49,6 +56,7 @@ import com.shieldstream.tv.ui.component.CatalogPosterCard
 import com.shieldstream.tv.ui.component.LineIcons
 import com.shieldstream.tv.ui.component.TvButton
 import com.shieldstream.tv.ui.theme.AppColors
+import kotlinx.coroutines.launch
 
 @Composable
 fun PersonScreen(
@@ -59,6 +67,8 @@ fun PersonScreen(
 ) {
     LaunchedEffect(personId) { viewModel.load(personId) }
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val gridState = rememberLazyGridState()
+    val coroutineScope = rememberCoroutineScope()
     var menuItem by remember { mutableStateOf<CatalogItem?>(null) }
 
     BackHandler {
@@ -92,6 +102,7 @@ fun PersonScreen(
                 horizontalArrangement = Arrangement.spacedBy(18.dp),
                 verticalArrangement = Arrangement.spacedBy(22.dp),
                 modifier = Modifier.fillMaxSize(),
+                state = gridState,
             ) {
                 item(key = "person_header", span = { GridItemSpan(maxLineSpan) }) {
                     PersonHeader(current.person)
@@ -102,6 +113,17 @@ fun PersonScreen(
                         onClick = { onOpenItem(item) },
                         onLongClick = { menuItem = item },
                         width = 140.dp,
+                        modifier = Modifier.onPreviewKeyEvent { event ->
+                            if (event.key != Key.DirectionUp || event.type != KeyEventType.KeyDown) {
+                                return@onPreviewKeyEvent false
+                            }
+                            val firstFilmographyRow = gridState.layoutInfo.visibleItemsInfo.any {
+                                it.key == item.key && it.row == 1
+                            }
+                            if (!firstFilmographyRow) return@onPreviewKeyEvent false
+                            coroutineScope.launch { gridState.animateScrollToItem(0) }
+                            true
+                        },
                     )
                 }
             }
