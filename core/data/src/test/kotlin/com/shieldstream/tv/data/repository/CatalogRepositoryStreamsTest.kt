@@ -59,6 +59,7 @@ class CatalogRepositoryStreamsTest {
         texts = texts,
         ithil = mockk<IthilLibraryRepository>(),
         ithilAccess = mockk<IthilAccessRepository>(),
+        itemStore = FakeCatalogItemStore(),
     )
 
     @Test

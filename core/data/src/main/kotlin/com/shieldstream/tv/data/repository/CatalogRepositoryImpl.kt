@@ -19,7 +19,9 @@ import okhttp3.MediaType.Companion.toMediaType
 import com.shieldstream.tv.domain.StreamResults
 import com.shieldstream.tv.domain.ApiService
 import android.util.Log
+import com.shieldstream.tv.domain.CatalogCacheRefresher
 import com.shieldstream.tv.domain.CatalogRepository
+import com.shieldstream.tv.domain.mapConcurrent
 import com.shieldstream.tv.domain.IthilLibraryRepository
 import com.shieldstream.tv.domain.IthilAccessRepository
 import com.shieldstream.tv.domain.DebridService
@@ -68,7 +70,8 @@ class CatalogRepositoryImpl @Inject constructor(
     private val texts: Texts,
     private val ithil: IthilLibraryRepository,
     private val ithilAccess: IthilAccessRepository,
-) : CatalogRepository {
+    private val itemStore: CatalogItemStore,
+) : CatalogRepository, CatalogCacheRefresher {
 
     private val kids: Boolean get() = profiles.active.value.kids
 
@@ -255,11 +258,43 @@ class CatalogRepositoryImpl @Inject constructor(
     private val itemCache = ConcurrentHashMap<String, CatalogItem>()
 
     override suspend fun getItem(type: MediaType, id: String): CatalogItem? {
-        val cacheKey = "${type.name}_$id"
-        itemCache[cacheKey]?.let { return it }
+        cachedItem(type, id)?.let { return it }
         // A show's item comes from the same TMDB request as its airing data. Sharing it fills both
         // caches with one download; separately, Home and My List fetched every show twice.
         if (type == MediaType.TV) return getShowAiring(id)?.item
+        return fetchMovie(id)
+    }
+
+    // Persisted items may be stale; refreshStaleItems updates them while content plays.
+    override suspend fun cachedItem(type: MediaType, id: String): CatalogItem? {
+        val cacheKey = "${type.name}_$id"
+        itemCache[cacheKey]?.let { return it }
+        return itemStore.get(type, id)?.item?.also { itemCache[cacheKey] = it }
+    }
+
+    override suspend fun refreshStaleItems() {
+        val now = System.currentTimeMillis()
+        val stale = itemStore.all()
+            .filter { now - it.savedAt > ITEM_REFRESH_MS }
+            .sortedBy { it.savedAt }
+            .take(MAX_ITEM_REFRESH)
+        if (stale.isEmpty()) return
+        val refreshed = stale.mapConcurrent(concurrency = 2) { cached ->
+            try {
+                // Shows refresh through their airing request, which also updates the persisted item.
+                val fresh = if (cached.item.type == MediaType.TV) getShowAiring(cached.item.id) else fetchMovie(cached.item.id)
+                fresh != null
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.w("CatalogCache", "Refresh failed for ${cached.item.key}: ${e.message}")
+                false
+            }
+        }.count { it }
+        Log.i("CatalogCache", "Refreshed $refreshed of ${stale.size} stale cached items")
+    }
+
+    private suspend fun fetchMovie(id: String): CatalogItem? {
         val tmdbId = id.toIntOrNull() ?: return null
         val d = tmdb.movieDetails(tmdbId, key, append = "")
         val item = CatalogItem(
@@ -275,7 +310,8 @@ class CatalogRepositoryImpl @Inject constructor(
             genres = d.genres.map { it.name },
             releaseDate = d.release_date,
         )
-        itemCache[cacheKey] = item
+        itemCache[item.key] = item
+        itemStore.put(item)
         return item
     }
 
@@ -309,7 +345,8 @@ class CatalogRepositoryImpl @Inject constructor(
                     .filter { it.season_number > 0 && it.episode_count > 0 }
                     .map { Season(it.season_number, it.name, it.episode_count) },
             ).also {
-                itemCache["TV_$id"] = item
+                itemCache[item.key] = item
+                itemStore.put(item)
                 airingCache[id] = CachedAiring(System.currentTimeMillis(), it)
             }
         }
@@ -751,3 +788,7 @@ class CatalogRepositoryImpl @Inject constructor(
 private const val HOME_CACHE_MS = 30 * 60 * 1000L
 
 private const val AIRING_CACHE_MS = 6 * 60 * 60 * 1000L
+
+// Persisted item metadata older than this is refetched in the background while content plays.
+private const val ITEM_REFRESH_MS = 24 * 60 * 60 * 1000L
+private const val MAX_ITEM_REFRESH = 200

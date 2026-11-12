@@ -16,6 +16,7 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.DecoderReuseEvaluation
 import androidx.media3.exoplayer.analytics.AnalyticsListener
+import com.shieldstream.tv.domain.CatalogCacheRefresher
 import com.shieldstream.tv.domain.ResolveState
 import com.shieldstream.tv.domain.ResolveStreamUseCase
 import com.shieldstream.tv.domain.SelectedContentHolder
@@ -37,6 +38,7 @@ import com.shieldstream.tv.model.SubtitleAppearance
 import com.shieldstream.tv.model.SubtitlePreference
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -82,7 +84,22 @@ class PlayerViewModel @Inject constructor(
     private val trakt: TraktRepository,
     private val skipSegmentsRepository: SkipSegmentsRepository,
     private val texts: Texts,
+    private val catalogCache: CatalogCacheRefresher,
 ) : ViewModel() {
+
+    private var catalogRefreshScheduled = false
+
+    // Refresh persisted catalog metadata while the user watches, so browsing never waits on it.
+    // The delay keeps the requests clear of the stream's initial buffering.
+    private fun scheduleCatalogRefresh() {
+        if (catalogRefreshScheduled) return
+        catalogRefreshScheduled = true
+        viewModelScope.launch {
+            delay(CATALOG_REFRESH_DELAY_MS)
+            runCatching { catalogCache.refreshStaleItems() }
+                .onFailure { if (it is CancellationException) throw it }
+        }
+    }
 
     private val _player = MutableStateFlow<ExoPlayer?>(null)
     val player: StateFlow<ExoPlayer?> = _player.asStateFlow()
@@ -606,6 +623,7 @@ class PlayerViewModel @Inject constructor(
                     if (isPlaying) {
                         playbackRetries = 0
                         sourceFailover.everPlayed = true
+                        scheduleCatalogRefresh()
                     }
                     if (!isPlaying) saveProgress()
                     if (isPlaying) scrobble(ScrobbleAction.START)
@@ -661,6 +679,7 @@ class PlayerViewModel @Inject constructor(
         const val NEXT_UP_FALLBACK_MIN_MS = 20_000L
         const val AFTER_CREDITS_SLACK_MS = 30_000L
         const val MIN_EPISODE_MS = 5 * 60_000L
+        const val CATALOG_REFRESH_DELAY_MS = 30_000L
     }
 
     private fun formatTime(ms: Long): String {

@@ -56,6 +56,13 @@ Notifications are opt-in, followed-shows-only, and run through periodic WorkMana
 
 Most persistence uses profile-specific `SharedPreferences`; there is no Room database for watch state. Tokens and user keys belong in `TokenStore` and the gitignored `local.properties`. Never print, commit, or copy credentials into notes, tests, screenshots, or documentation.
 
+Catalog item metadata (title, artwork, year, rating) is cached in `cacheDir/catalog_items.json` by `FileCatalogItemStore`:
+
+- Entries are per interface language, capped at 800 by fetch time. Episode and airing data are not persisted and stay network-fresh.
+- `getItem` checks memory, then disk, then network. `cachedItem` never makes a request.
+- Entries older than 24 h are refetched two at a time, 30 s after playback starts (`CatalogCacheRefresher`), so refreshes happen while the user watches.
+- On the Nokia cold start, the cache shows all 138 My List items in 2 ms and Home's My list row in 5 ms. Startup requests fell from 257 to 151.
+
 ## Performance rules learned on the physical TV box
 
 These are measured project-specific rules, not generic Compose advice. The reference device is the Nokia Streaming Box 8010. Lightweight UI was Off during several measurements, so the normal path must also be efficient.

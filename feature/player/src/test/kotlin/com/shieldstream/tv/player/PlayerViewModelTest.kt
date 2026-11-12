@@ -8,6 +8,7 @@ import androidx.media3.common.TrackGroup
 import androidx.media3.common.TrackSelectionParameters
 import androidx.media3.common.Tracks
 import androidx.media3.exoplayer.ExoPlayer
+import com.shieldstream.tv.domain.CatalogCacheRefresher
 import com.shieldstream.tv.domain.ProfileRepository
 import com.shieldstream.tv.domain.ResolveState
 import com.shieldstream.tv.domain.ResolveStreamUseCase
@@ -261,6 +262,7 @@ class PlayerViewModelTest {
                 trakt = mockk<TraktRepository>(relaxed = true),
                 skipSegmentsRepository = mockk<SkipSegmentsRepository>(relaxed = true),
                 texts = mockk<Texts>(relaxed = true),
+                catalogCache = mockk<CatalogCacheRefresher>(relaxed = true),
             ),
         )
     }

@@ -7,7 +7,10 @@ import com.shieldstream.tv.data.repository.EpisodeReleaseRepositoryImpl
 import com.shieldstream.tv.data.repository.EpisodeTrackingRepositoryImpl
 import com.shieldstream.tv.data.repository.TorrentioLinkResolverImpl
 import com.shieldstream.tv.domain.TorrentioLinkResolver
+import com.shieldstream.tv.data.repository.CatalogItemStore
 import com.shieldstream.tv.data.repository.CatalogRepositoryImpl
+import com.shieldstream.tv.data.repository.FileCatalogItemStore
+import com.shieldstream.tv.domain.CatalogCacheRefresher
 import com.shieldstream.tv.domain.AllDebridAuthRepository
 import com.shieldstream.tv.domain.AllDebridRepository
 import com.shieldstream.tv.domain.ApiKeysRepository
@@ -75,6 +78,14 @@ abstract class DataModule {
     @Binds
     @Singleton
     abstract fun bindCatalogRepository(impl: CatalogRepositoryImpl): CatalogRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindCatalogCacheRefresher(impl: CatalogRepositoryImpl): CatalogCacheRefresher
+
+    @Binds
+    @Singleton
+    abstract fun bindCatalogItemStore(impl: FileCatalogItemStore): CatalogItemStore
 
     @Binds
     @Singleton

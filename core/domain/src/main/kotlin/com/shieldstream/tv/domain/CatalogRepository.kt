@@ -27,6 +27,9 @@ interface CatalogRepository {
 
     suspend fun getItem(type: MediaType, id: String): CatalogItem?
 
+    /** An item already in memory or in the persistent cache, without any network request. */
+    suspend fun cachedItem(type: MediaType, id: String): CatalogItem?
+
     suspend fun getPerson(personId: Int): PersonDetails
 
     suspend fun getShowAiring(id: String): ShowAiring?

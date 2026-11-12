@@ -105,9 +105,24 @@ class MyListViewModel @Inject constructor(
                 MyListFilter.MOVIES -> it.type == MediaType.MOVIE
             }
         }
-        // Under Recent, the newest entries are exactly the top of the final list, so they can appear
-        // first. Other sorts depend on data from every item; an early batch would reshuffle when the
-        // rest arrived, so they keep showing the previous list until the full one is ready.
+        // Under Recent, persisted items appear at once in their final order; new-episode badges and
+        // uncached items follow when their requests finish. A cold start then needs no TMDB request
+        // before the list is visible.
+        if (current.sort == MyListSort.RECENT && !current.hideCompleted) {
+            val cached = wanted.mapNotNull { entry ->
+                val item = loaded[entry.key] ?: runCatching { catalogRepository.cachedItem(entry.type, entry.id) }.getOrNull()
+                item?.let { LoadedMyListItem(it, entry.addedAt) }
+            }
+            if (cached.isNotEmpty()) {
+                emit(buildState(cached, current))
+                emit(buildState(loadItems(wanted, current), current))
+                return@flow
+            }
+        }
+        // Without cached items, the newest entries are still exactly the top of the final list under
+        // Recent, so they can appear first. Other sorts depend on data from every item; an early batch
+        // would reshuffle when the rest arrived, so they keep showing the previous list until the
+        // full one is ready.
         if (current.sort != MyListSort.RECENT || wanted.size <= INITIAL_BATCH_SIZE) {
             emit(buildState(loadItems(wanted, current), current))
             return@flow

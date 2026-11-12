@@ -661,6 +661,45 @@ class HomeViewModelsTest {
     }
 
     @Test
+    fun `my list shows cached items before episode statuses load`() = runTest {
+        val show = item("tv", MediaType.TV, "Show")
+        val movie = item("movie", MediaType.MOVIE, "Movie")
+        val entries = listOf(
+            MyListEntry(MediaType.TV, "tv", addedAt = 200),
+            MyListEntry(MediaType.MOVIE, "movie", addedAt = 100),
+        )
+        val allowStatus = CompletableDeferred<Unit>()
+        val catalog = mockk<CatalogRepository>()
+        coEvery { catalog.cachedItem(MediaType.TV, "tv") } returns show
+        coEvery { catalog.cachedItem(MediaType.MOVIE, "movie") } returns movie
+        coEvery { catalog.getItem(MediaType.MOVIE, "movie") } returns movie
+        val releases = mockk<EpisodeReleaseRepository>()
+        coEvery { releases.status("tv") } coAnswers {
+            allowStatus.await()
+            ShowEpisodeStatus(show, availableEpisodes = listOf(Episode(1, 1, "New", "", null, 45, "2026-01-01")))
+        }
+        val viewModel = MyListViewModel(
+            catalogRepository = catalog,
+            myList = mockk { every { this@mockk.entries } returns MutableStateFlow(entries) },
+            watchProgress = mockk { every { progress } returns MutableStateFlow(emptyMap()) },
+            episodeReleases = releases,
+            tracking = tracking(),
+        )
+        backgroundScope.launch { viewModel.uiState.collect {} }
+        // runCurrent, not advanceUntilIdle: advancing virtual time would expire the status timeout.
+        runCurrent()
+
+        assertEquals(listOf("tv", "movie"), viewModel.content().items.map { it.id })
+        assertEquals(0, viewModel.content().newEpisodeCounts[show.key])
+
+        allowStatus.complete(Unit)
+        runCurrent()
+        assertEquals(listOf("tv", "movie"), viewModel.content().items.map { it.id })
+        assertEquals(1, viewModel.content().newEpisodeCounts[show.key])
+        coVerify(exactly = 0) { catalog.getItem(MediaType.TV, any()) }
+    }
+
+    @Test
     fun `my list sorts that need every item do not emit a partial list`() = runTest {
         val entries = (1..25).map { MyListEntry(MediaType.MOVIE, it.toString(), addedAt = (100 - it).toLong()) }
         val allowRemaining = CompletableDeferred<Unit>()
