@@ -3,7 +3,7 @@
 
 Franklix is a fork of https://github.com/grodri99/bambi.
 
-** This app is under heavy development. It can breaks! **
+**This app is under heavy development. It can breaks!**
 
 Credits
 
