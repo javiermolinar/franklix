@@ -75,6 +75,8 @@ These are measured project-specific rules, not generic Compose advice. The refer
 - Playback position updates are frequent. Episode-release flows should react to meaningful watched-key/dismissal/candidate changes, not every position update.
 - Keep visible poster focus feedback. The current `1.04x` scale is intentional; removing scaling previously gave no speed improvement and made feedback worse.
 - Preserve the order of clickable/focus handling before scaling in `PosterCard`; changing it caused vertical list jumps.
+- Poster cards draw through `CardImage`, not Coil's `AsyncImage`. While a poster grid scrolls, `AsyncImage` cost ~30% of main-thread time on the Nokia: a coroutine with `snapshotFlow`/`mapLatest` per image, plus a measure-time size handshake. `CardImage` uses a known decode size, hits the memory cache synchronously, and enqueues one request. My List fast-scroll frames went from 44 to 29 ms median (p90 67 to 39 ms), and Home vertical p90 from 45 to 36 ms. Prefer it for new image-heavy lazy rows and grids.
+- My List load is not the bottleneck, so pagination would not help. With 138 entries, the first 20 appear in ~10 ms and the full list in ~1.8 s, and the grid is already lazy. The cost is composing each newly visible row of cards.
 - Use explicit focus requesters/properties where geometric focus chooses the wrong TV destination. Test Back, held Up/Down, and returning from Details/player.
 
 ### Network and concurrency

@@ -91,11 +91,13 @@ fun PosterCard(
                 .background(AppColors.Placeholder)
                 .then(if (focused) Modifier.border(2.dp, FocusBorderColor, CardShape) else Modifier),
         ) {
-            if (item.posterUrl != null) {
-                AsyncImage(
-                    model = item.posterUrl,
+            val posterUrl = item.posterUrl
+            if (posterUrl != null) {
+                CardImage(
+                    url = posterUrl,
                     contentDescription = item.title,
-                    contentScale = ContentScale.Crop,
+                    width = width,
+                    height = width * 3 / 2,
                     modifier = Modifier.fillMaxSize(),
                 )
             } else {
