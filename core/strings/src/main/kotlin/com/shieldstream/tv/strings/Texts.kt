@@ -56,8 +56,9 @@ fun localizedPluralResource(@PluralsRes id: Int, count: Int, vararg formatArgs: 
     }
 }
 
+/** Resources in the app language, for plain lookups outside composition (raw templates, many labels). */
 @Composable
-private fun localizedResources(): Resources {
+fun localizedResources(): Resources {
     val context = LocalContext.current
     val language = Lang.current
     val localizedContext = remember(context, language) { context.localizedContext(language) }

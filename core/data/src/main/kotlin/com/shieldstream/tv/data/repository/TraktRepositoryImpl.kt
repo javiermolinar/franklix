@@ -200,7 +200,8 @@ class TraktRepositoryImpl @Inject constructor(
                         id = id.toString(),
                         addedAt = TraktClient.parseDate(item.string("listed_at")) ?: 0L,
                     )
-                    remote.putIfAbsent(entry.key, entry)
+                    // getOrPut, not putIfAbsent: that needs API 24 and minSdk is 21.
+                    remote.getOrPut(entry.key) { entry }
                 }
                 if (items.size < PERSONAL_LIST_PAGE_LIMIT) break
                 page++

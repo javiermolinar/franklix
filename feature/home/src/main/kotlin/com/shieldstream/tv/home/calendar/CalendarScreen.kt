@@ -35,9 +35,6 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
-import androidx.compose.ui.platform.LocalContext
-import android.content.res.Configuration
-import android.content.res.Resources
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -52,6 +49,7 @@ import com.shieldstream.tv.model.Lang
 import com.shieldstream.tv.model.MonthGrid
 import com.shieldstream.tv.strings.R as StringsR
 import com.shieldstream.tv.strings.localizedPluralResource
+import com.shieldstream.tv.strings.localizedResources
 import com.shieldstream.tv.strings.localizedStringResource
 import com.shieldstream.tv.ui.component.requestFocusWithRetry
 import com.shieldstream.tv.ui.theme.CalendarColors
@@ -359,16 +357,6 @@ internal fun panelSections(day: CalendarDay): List<PanelSectionModel> = listOf(
     PanelSectionModel(CalendarSection.EPISODES, day.shows.map { PanelTile.ShowTile(it) }, day.episodes.size),
     PanelSectionModel(CalendarSection.RELEASES, day.releases.map { PanelTile.ReleaseTile(it) }, day.releases.size),
 )
-
-/** Resources in the app language, for plain (non-composable) lookups such as 42 cell labels. */
-@Composable
-private fun localizedResources(): Resources {
-    val context = LocalContext.current
-    val language = Lang.current
-    return remember(context, language) {
-        context.createConfigurationContext(Configuration(context.resources.configuration).apply { setLocale(language.locale) }).resources
-    }
-}
 
 @Composable
 private fun DayPanel(
