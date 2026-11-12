@@ -257,38 +257,24 @@ class CatalogRepositoryImpl @Inject constructor(
     override suspend fun getItem(type: MediaType, id: String): CatalogItem? {
         val cacheKey = "${type.name}_$id"
         itemCache[cacheKey]?.let { return it }
+        // A show's item comes from the same TMDB request as its airing data. Sharing it fills both
+        // caches with one download; separately, Home and My List fetched every show twice.
+        if (type == MediaType.TV) return getShowAiring(id)?.item
         val tmdbId = id.toIntOrNull() ?: return null
-        val item = if (type == MediaType.TV) {
-            val d = tmdb.tvDetails(tmdbId, key, append = "external_ids")
-            CatalogItem(
-                id = id,
-                imdbId = d.external_ids?.imdb_id,
-                type = MediaType.TV,
-                title = d.name,
-                overview = d.overview,
-                posterUrl = d.poster_path?.let { poster(it) },
-                backdropUrl = d.backdrop_path?.let { backdrop(it) },
-                year = d.first_air_date?.take(4)?.toIntOrNull(),
-                rating = d.vote_average.toFloat(),
-                genres = d.genres.map { it.name },
-                releaseDate = d.first_air_date,
-            )
-        } else {
-            val d = tmdb.movieDetails(tmdbId, key, append = "")
-            CatalogItem(
-                id = id,
-                imdbId = d.imdb_id,
-                type = MediaType.MOVIE,
-                title = d.title,
-                overview = d.overview,
-                posterUrl = d.poster_path?.let { poster(it) },
-                backdropUrl = d.backdrop_path?.let { backdrop(it) },
-                year = d.release_date?.take(4)?.toIntOrNull(),
-                rating = d.vote_average.toFloat(),
-                genres = d.genres.map { it.name },
-                releaseDate = d.release_date,
-            )
-        }
+        val d = tmdb.movieDetails(tmdbId, key, append = "")
+        val item = CatalogItem(
+            id = id,
+            imdbId = d.imdb_id,
+            type = MediaType.MOVIE,
+            title = d.title,
+            overview = d.overview,
+            posterUrl = d.poster_path?.let { poster(it) },
+            backdropUrl = d.backdrop_path?.let { backdrop(it) },
+            year = d.release_date?.take(4)?.toIntOrNull(),
+            rating = d.vote_average.toFloat(),
+            genres = d.genres.map { it.name },
+            releaseDate = d.release_date,
+        )
         itemCache[cacheKey] = item
         return item
     }
