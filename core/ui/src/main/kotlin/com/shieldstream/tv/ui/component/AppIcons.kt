@@ -136,6 +136,12 @@ object LineIcons {
     val Close = line("line_close", "M6,6L18,18M18,6L6,18")
     val Delete = line("line_delete", "M4,7H20M9,7V4H15V7M6,7L7,21H17L18,7M10,11V17M14,11V17")
     val Exit = line("line_exit", "M10,5H5V19H10M14,8L18,12L14,16M18,12H9")
+    val Calendar = line(
+        "line_calendar",
+        "M5,5H19a1,1 0,0 1,1,1V19a1,1 0,0 1,-1,1H5a1,1 0,0 1,-1,-1V6a1,1 0,0 1,1,-1Z M4,10H20 M8,3V7 M16,3V7",
+    )
+    val ChevronLeft = line("line_chevron_left", "M15,5L8,12L15,19")
+    val ChevronRight = line("line_chevron_right", "M9,5L16,12L9,19")
     val Bookmark = line("line_bookmark", "M7,4H17a1,1 0,0 1,1,1V20L12,16L6,20V5a1,1 0,0 1,1,-1Z")
     val Settings = line(
         "line_settings",

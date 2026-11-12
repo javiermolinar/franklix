@@ -32,6 +32,8 @@ data class Season(
     val number: Int,
     val name: String,
     val episodeCount: Int,
+    /** Premiere date (`YYYY-MM-DD`), when TMDB knows it. */
+    val airDate: String? = null,
 )
 
 data class Episode(

@@ -41,6 +41,8 @@ import com.shieldstream.tv.data.repository.IthilUpdateRepositoryImpl
 import com.shieldstream.tv.domain.IthilUpdateRepository
 import com.shieldstream.tv.data.repository.IthilAccessRepositoryImpl
 import com.shieldstream.tv.domain.IthilAccessRepository
+import com.shieldstream.tv.data.repository.CalendarRepositoryImpl
+import com.shieldstream.tv.domain.CalendarRepository
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -50,6 +52,10 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 abstract class DataModule {
+
+    @Binds
+    @Singleton
+    abstract fun bindCalendarRepository(impl: CalendarRepositoryImpl): CalendarRepository
 
     @Binds
     @Singleton

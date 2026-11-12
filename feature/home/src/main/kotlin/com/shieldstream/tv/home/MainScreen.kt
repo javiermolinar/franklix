@@ -31,6 +31,8 @@ import com.shieldstream.tv.ui.component.NavRail
 import com.shieldstream.tv.ui.component.NavTab
 import com.shieldstream.tv.ui.component.RailContentStart
 import com.shieldstream.tv.ui.component.onBackKey
+import com.shieldstream.tv.ui.component.requestFocusWithRetry
+import com.shieldstream.tv.home.calendar.CalendarScreen
 
 @Composable
 fun MainScreen(
@@ -63,8 +65,12 @@ fun MainScreen(
     val episodeState by episodeCenter.uiState.collectAsState()
     LaunchedEffect(tab) { if (tab == NavTab.EPISODES) episodeCenter.activate() }
     val focusRail: () -> Unit = { runCatching { railRequester.requestFocus() } }
+    // The calendar uses the full width; the rail is drawn only while it has focus (after Back).
+    var revealRail by remember { mutableStateOf(false) }
+    val showRail = tab != NavTab.CALENDAR || railFocused || revealRail
+    LaunchedEffect(revealRail) { if (revealRail) railRequester.requestFocusWithRetry() }
 
-    val railFocusable = homeInteractive || tab == NavTab.SEARCH || tab == NavTab.MY_LIST || tab == NavTab.EPISODES
+    val railFocusable = homeInteractive || tab == NavTab.SEARCH || tab == NavTab.MY_LIST || tab == NavTab.EPISODES || tab == NavTab.CALENDAR
     BackHandler(enabled = showExitConfirmation || shouldRequestExit(category != null, railFocused || !railFocusable)) {
         showExitConfirmation = !showExitConfirmation
     }
@@ -86,11 +92,16 @@ fun MainScreen(
             Box(
                 Modifier
                     .fillMaxSize()
-                    .onBackKey(enabled = true) { focusRail() }
+                    .onBackKey(enabled = true) { if (showRail) focusRail() else revealRail = true }
                     .focusRequester(contentRequester)
                     .focusGroup(),
             ) {
                 when (tab) {
+                    // OK on a poster opens its details page; episodes open on that episode.
+                    NavTab.CALENDAR -> CalendarScreen(
+                        onOpenEpisode = { onOpenNewEpisode(it.show, it.episode) },
+                        onOpenRelease = { onOpenItem(it.item) },
+                    )
                     NavTab.SEARCH, NavTab.MY_LIST, NavTab.EPISODES -> Box(
                         Modifier.fillMaxSize().padding(start = TabContentInset),
                     ) {
@@ -118,12 +129,13 @@ fun MainScreen(
                     }
                 }
             }
-            NavRail(
+            if (showRail) NavRail(
                 selected = tab,
                 onSelect = { selected ->
                     if (selected != tab) {
                         tab = selected
-                        focusMenuAfterSwitch = selected != NavTab.SEARCH && selected != NavTab.MY_LIST && selected != NavTab.EPISODES
+                        focusMenuAfterSwitch = selected != NavTab.SEARCH && selected != NavTab.MY_LIST &&
+                            selected != NavTab.EPISODES && selected != NavTab.CALENDAR
                     }
                 },
                 onSettings = onOpenSettings,
@@ -134,7 +146,12 @@ fun MainScreen(
                 profileInitial = profileInitial,
                 profileAvatar = profileAvatar,
                 onProfile = onSwitchProfile,
-                onFocusChange = { railFocused = it },
+                onFocusChange = { focused ->
+                    // The rail reports "not focused" when it is first attached; only a real focus
+                    // loss hides it again on the calendar.
+                    if (railFocused && !focused) revealRail = false
+                    railFocused = focused
+                },
                 modifier = Modifier.align(Alignment.CenterStart),
             )
         }

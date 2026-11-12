@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="calendar_title">Calendario</string>
+    <string name="calendar_rating_any">Todas</string>
+    <string name="calendar_min_rating">Valoración mínima</string>
+    <string name="calendar_previous_month">Mes anterior</string>
+    <string name="calendar_next_month">Mes siguiente</string>
+    <string name="calendar_today">Hoy</string>
+    <string name="calendar_month_title">%1$s de %2$d</string>
+    <string name="calendar_day_label">%1$d de %2$s, %3$s</string>
+    <string name="calendar_legend_episode">Tu episodio</string>
+    <string name="calendar_legend_watched">Visto</string>
+    <string name="calendar_legend_release">Mejor estreno</string>
+    <string name="calendar_section_shows">Tus series</string>
+    <string name="calendar_section_releases">Mejores estrenos</string>
+    <string name="calendar_empty_all">Nada este día.</string>
+    <string name="calendar_episode_range">T%1$d:E%2$d–%3$d</string>
+    <string name="calendar_tag_premiere">Estreno</string>
+    <string name="calendar_tag_finale">Final</string>
+    <string name="calendar_tag_new">Nuevo</string>
+    <string name="calendar_tag_new_series">Serie nueva</string>
+    <string name="calendar_rating_label">Valoración %1$s</string>
+    <plurals name="calendar_items">
+        <item quantity="one">%1$d elemento</item>
+        <item quantity="other">%1$d elementos</item>
+    </plurals>
+    <plurals name="calendar_episodes">
+        <item quantity="one">%1$d episodio</item>
+        <item quantity="other">%1$d episodios</item>
+    </plurals>
+    <plurals name="calendar_releases">
+        <item quantity="one">%1$d estreno</item>
+        <item quantity="other">%1$d estrenos</item>
+    </plurals>
+</resources>

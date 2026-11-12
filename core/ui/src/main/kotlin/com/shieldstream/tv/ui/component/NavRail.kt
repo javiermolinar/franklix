@@ -62,6 +62,7 @@ enum class NavTab(val icon: ImageVector) {
     MOVIES(LineIcons.Movie),
     TV(LineIcons.Tv),
     EPISODES(LineIcons.Episodes),
+    CALENDAR(LineIcons.Calendar),
     MY_LIST(LineIcons.Bookmark),
 }
 
@@ -73,6 +74,7 @@ private val NavTab.labelResource: Int
         NavTab.MOVIES -> StringsR.string.common_movies
         NavTab.TV -> StringsR.string.common_tv_shows
         NavTab.EPISODES -> StringsR.string.common_episodes
+        NavTab.CALENDAR -> StringsR.string.calendar_title
         NavTab.MY_LIST -> StringsR.string.common_my_list
     }
 

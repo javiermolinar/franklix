@@ -51,6 +51,41 @@ object AppColors {
     val Error = Color(0xFFFF5A5F)
 }
 
+/**
+ * Calendar screen roles, mapped onto the shared palette so the screen matches the rest of the app:
+ * white carries focus, selection and "today"; [AppColors.Highlight] marks best releases.
+ * Change [Accent] here to give the calendar a different primary colour.
+ */
+object CalendarColors {
+    val Canvas = AppColors.Background
+    /** Days with episodes or releases. Empty days and other months' days have no background. */
+    val Cell = AppColors.Surface
+    val CellSelected = AppColors.SurfaceFocused
+
+    val Text = Color.White
+    val TextSecondary = Color.White.copy(alpha = 0.6f)
+    val TextOutside = Color.White.copy(alpha = 0.5f)
+
+    /** Today's marker and focused controls. */
+    val Accent = AppColors.Accent
+    val OnAccent = AppColors.OnAccent
+
+    /** Selected but unfocused tabs and chips, as in My List's filters. */
+    val ControlSelected = Color.White.copy(alpha = 0.22f)
+    val ControlIdle = Color.White.copy(alpha = 0.08f)
+
+    /** Ring on the selected day and around focused posters. */
+    val FocusRing = Color.White.copy(alpha = 0.88f)
+
+    /** Ring on the selected day while focus is elsewhere, so only one strong outline is on screen. */
+    val SelectedRing = Color.White.copy(alpha = 0.35f)
+
+    val EpisodeDot = Color.White
+    val WatchedDot = Color.White.copy(alpha = 0.55f)
+    val Release = AppColors.Highlight
+    val Watched = AppColors.Success
+}
+
 /** Shared corner radii. Use these instead of ad-hoc `RoundedCornerShape` values. */
 object AppShapes {
     /** Small labels: age ratings, media badges, "new" tags, checkboxes, skeleton text. */

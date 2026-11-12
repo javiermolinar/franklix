@@ -343,7 +343,7 @@ class CatalogRepositoryImpl @Inject constructor(
                 nextEpisode = d.next_episode_to_air?.toEpisode(),
                 seasons = d.seasons
                     .filter { it.season_number > 0 && it.episode_count > 0 }
-                    .map { Season(it.season_number, it.name, it.episode_count) },
+                    .map { Season(it.season_number, it.name, it.episode_count, it.air_date) },
             ).also {
                 itemCache[item.key] = item
                 itemStore.put(item)
