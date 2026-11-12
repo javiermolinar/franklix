@@ -16,11 +16,13 @@ import com.shieldstream.tv.model.MediaType
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.mapLatest
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.withTimeoutOrNull
 import java.util.concurrent.ConcurrentHashMap
@@ -91,10 +93,10 @@ class MyListViewModel @Inject constructor(
         MyListQuery(entries, currentControls, progress.filterValues { it.isWatched }.keys, dismissed)
     }
         .distinctUntilChanged()
-        .mapLatest { query -> load(query) }
+        .flatMapLatest { query -> load(query) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MyListUiState.Loading)
 
-    private suspend fun load(query: MyListQuery): MyListUiState {
+    private fun load(query: MyListQuery): Flow<MyListUiState> = flow {
         val current = query.controls
         val wanted = query.entries.filter {
             when (current.filter) {
@@ -103,25 +105,38 @@ class MyListViewModel @Inject constructor(
                 MyListFilter.MOVIES -> it.type == MediaType.MOVIE
             }
         }
-        val result = wanted.mapConcurrent(concurrency = 4) { entry ->
-            val status = if (entry.type == MediaType.TV) {
-                withTimeoutOrNull(8_000) { runCatching { episodeReleases.status(entry.id) }.getOrNull() }
-            } else {
-                null
-            }
-            val item = loaded[entry.key] ?: status?.item ?: withTimeoutOrNull(5_000) {
-                runCatching { catalogRepository.getItem(entry.type, entry.id) }.getOrNull()
-            }?.also { loaded[entry.key] = it }
-            val complete = current.hideCompleted && entry.type == MediaType.TV &&
-                runCatching { episodeReleases.isComplete(entry.id) }.getOrDefault(false)
-            item?.let { LoadedMyListItem(it, entry.addedAt, status?.availableEpisodes.orEmpty(), complete) }
-        }.filterNotNull().filterNot { it.complete }
+        val initial = loadItems(wanted.take(INITIAL_BATCH_SIZE), current)
+        emit(buildState(initial, current))
+        if (wanted.size > INITIAL_BATCH_SIZE) {
+            val remaining = loadItems(wanted.drop(INITIAL_BATCH_SIZE), current)
+            emit(buildState(initial + remaining, current))
+        }
+    }
+
+    private suspend fun loadItems(
+        entries: List<MyListEntry>,
+        current: MyListControls,
+    ): List<LoadedMyListItem> = entries.mapConcurrent(concurrency = 4) { entry ->
+        val status = if (entry.type == MediaType.TV) {
+            withTimeoutOrNull(8_000) { runCatching { episodeReleases.status(entry.id) }.getOrNull() }
+        } else {
+            null
+        }
+        val item = loaded[entry.key] ?: status?.item ?: withTimeoutOrNull(5_000) {
+            runCatching { catalogRepository.getItem(entry.type, entry.id) }.getOrNull()
+        }?.also { loaded[entry.key] = it }
+        val complete = current.hideCompleted && entry.type == MediaType.TV &&
+            runCatching { episodeReleases.isComplete(entry.id) }.getOrDefault(false)
+        item?.let { LoadedMyListItem(it, entry.addedAt, status?.availableEpisodes.orEmpty(), complete) }
+    }.filterNotNull().filterNot { it.complete }
+
+    private fun buildState(items: List<LoadedMyListItem>, current: MyListControls): MyListUiState {
         val sorted = when (current.sort) {
-            MyListSort.NEW_FIRST -> result.sortedWith(
+            MyListSort.NEW_FIRST -> items.sortedWith(
                 compareByDescending<LoadedMyListItem> { it.newEpisodes.size }.thenByDescending { it.addedAt },
             )
-            MyListSort.RECENT -> result.sortedByDescending { it.addedAt }
-            MyListSort.TITLE -> result.sortedBy { it.item.title.lowercase(Lang.locale) }
+            MyListSort.RECENT -> items.sortedByDescending { it.addedAt }
+            MyListSort.TITLE -> items.sortedBy { it.item.title.lowercase(Lang.locale) }
         }
         if (sorted.isEmpty()) return MyListUiState.Empty(current.filter, current.sort, current.hideCompleted)
         return MyListUiState.Content(
@@ -139,3 +154,5 @@ class MyListViewModel @Inject constructor(
 
     fun remove(item: CatalogItem) = myList.remove(item.type, item.id)
 }
+
+private const val INITIAL_BATCH_SIZE = 20

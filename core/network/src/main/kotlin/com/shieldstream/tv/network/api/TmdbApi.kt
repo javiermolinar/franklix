@@ -6,6 +6,7 @@ import com.shieldstream.tv.network.dto.TmdbKeywordDto
 import com.shieldstream.tv.network.dto.TmdbMovieDetailDto
 import com.shieldstream.tv.network.dto.TmdbMovieDto
 import com.shieldstream.tv.network.dto.TmdbPaginated
+import com.shieldstream.tv.network.dto.TmdbPersonDto
 import com.shieldstream.tv.network.dto.TmdbSearchResponse
 import com.shieldstream.tv.network.dto.TmdbSearchResultDto
 import com.shieldstream.tv.network.dto.TmdbSeasonDto
@@ -116,7 +117,7 @@ interface TmdbApi {
     suspend fun movieDetails(
         @Path("id") id: Int,
         @Query("api_key") key: String,
-        @Query("append_to_response") append: String = "images,translations",
+        @Query("append_to_response") append: String = "images,translations,credits",
         @Query("include_image_language") imageLanguages: String = if (Lang.isEnglish) "en,null" else "es,en,null",
     ): TmdbMovieDetailDto
 
@@ -124,7 +125,7 @@ interface TmdbApi {
     suspend fun tvDetails(
         @Path("id") id: Int,
         @Query("api_key") key: String,
-        @Query("append_to_response") append: String = "images,external_ids,translations",
+        @Query("append_to_response") append: String = "images,external_ids,translations,credits",
         @Query("include_image_language") imageLanguages: String = if (Lang.isEnglish) "en,null" else "es,en,null",
     ): TmdbTvDetailDto
 
@@ -134,6 +135,13 @@ interface TmdbApi {
         @Path("season") season: Int,
         @Query("api_key") key: String,
     ): TmdbSeasonDto
+
+    @GET("3/person/{id}")
+    suspend fun personDetails(
+        @Path("id") id: Int,
+        @Query("api_key") key: String,
+        @Query("append_to_response") append: String = "combined_credits",
+    ): TmdbPersonDto
 
     @GET("3/movie/{id}/external_ids")
     suspend fun movieExternalIds(

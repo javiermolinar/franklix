@@ -12,6 +12,7 @@ import com.shieldstream.tv.domain.ProfileRepository
 import com.shieldstream.tv.domain.ResolveState
 import com.shieldstream.tv.domain.ResolveStreamUseCase
 import com.shieldstream.tv.domain.SelectedContentHolder
+import com.shieldstream.tv.domain.NextEpisode
 import com.shieldstream.tv.domain.SettingsRepository
 import com.shieldstream.tv.domain.SkipSegmentsRepository
 import com.shieldstream.tv.domain.SubtitleRepository
@@ -152,6 +153,24 @@ class PlayerViewModelTest {
     }
 
     @Test
+    fun `manual next episode works when autoplay is disabled`() = runBlocking {
+        val next = NextEpisode("1", 1, 2, "S1:E2")
+        val fixture = fixture(
+            players = FakePlayers(Tracks.EMPTY),
+            bufferSecondsFlow = flowOf(40),
+            subtitlePreference = SubtitlePreference.OFF,
+            nextEpisode = next,
+            autoNext = false,
+        )
+
+        assertTrue(fixture.viewModel.hasNextEpisode)
+        fixture.viewModel.playNextNow()
+
+        assertEquals(next, fixture.holder.consumeNextRequest())
+        verify(exactly = 1) { fixture.watchProgress.save("movie:1", 1L, 1L, null) }
+    }
+
+    @Test
     fun `subtitle appearance updates immediately and persists normalized values`() = runBlocking {
         val fixture = fixture(FakePlayers(Tracks.EMPTY), flowOf(40), SubtitlePreference.OFF)
         val requested = SubtitleAppearance(
@@ -171,6 +190,8 @@ class PlayerViewModelTest {
         players: FakePlayers,
         bufferSecondsFlow: Flow<Int>,
         subtitlePreference: SubtitlePreference,
+        nextEpisode: NextEpisode? = null,
+        autoNext: Boolean = true,
     ): Fixture {
         val policy = PlaybackPolicy.automatic(512L * 1024 * 1024)
         val media3Factory = mockk<Media3Factory>()
@@ -188,7 +209,7 @@ class PlayerViewModelTest {
             every { deviceOptimization } returns flowOf(DeviceOptimization.CUSTOM)
             every { this@mockk.maxBufferSeconds } returns bufferSecondsFlow
             every { seekThumbnails } returns flowOf(false)
-            every { autoNextEpisode } returns flowOf(true)
+            every { autoNextEpisode } returns flowOf(autoNext)
         }
         val profile = Profile(
             id = "test",
@@ -220,12 +241,14 @@ class PlayerViewModelTest {
                 label = "Movie",
                 progressKey = "movie:1",
                 media = PlaybackMedia(MediaType.MOVIE, "tt1", "Movie", "Movie", 2020),
+                next = nextEpisode,
             )
         }
         val watchProgress = mockk<WatchProgressRepository>(relaxed = true)
         return Fixture(
             settings = settings,
             watchProgress = watchProgress,
+            holder = holder,
             viewModel = PlayerViewModel(
                 media3Factory = media3Factory,
                 playbackPolicies = playbackPolicies,
@@ -275,6 +298,7 @@ class PlayerViewModelTest {
         val viewModel: PlayerViewModel,
         val settings: SettingsRepository,
         val watchProgress: WatchProgressRepository,
+        val holder: SelectedContentHolder,
     )
 
     private class FakePlayers(private val tracks: Tracks) {

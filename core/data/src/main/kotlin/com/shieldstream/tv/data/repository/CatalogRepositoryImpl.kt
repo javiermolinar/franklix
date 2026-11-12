@@ -217,6 +217,7 @@ class CatalogRepositoryImpl @Inject constructor(
                     imdbId = d.external_ids?.imdb_id ?: item.imdbId,
                     overview = d.overview.ifBlank { item.overview },
                     backdropUrl = d.backdrop_path?.let { backdrop(it) } ?: item.backdropUrl,
+                    releaseDate = d.first_air_date ?: item.releaseDate,
                 ),
                 logoUrl = pickLogo(d.images),
                 originalTitle = englishTitle(d.translations) ?: d.original_name,
@@ -228,6 +229,7 @@ class CatalogRepositoryImpl @Inject constructor(
                     .map { Season(it.season_number, it.name.ifBlank { texts.get(StringsR.string.data_season_name, it.season_number) }, it.episode_count) },
                 latestEpisode = d.last_episode_to_air?.toEpisode(),
                 nextEpisode = d.next_episode_to_air?.toEpisode(),
+                cast = d.credits?.cast.orEmpty().sortedBy { it.order }.take(20).map { it.toCastMember() },
             )
         } else {
             val d = tmdb.movieDetails(id, key)
@@ -236,15 +238,19 @@ class CatalogRepositoryImpl @Inject constructor(
                     imdbId = d.imdb_id ?: item.imdbId,
                     overview = d.overview.ifBlank { item.overview },
                     backdropUrl = d.backdrop_path?.let { backdrop(it) } ?: item.backdropUrl,
+                    releaseDate = d.release_date ?: item.releaseDate,
                 ),
                 logoUrl = pickLogo(d.images),
                 originalTitle = englishTitle(d.translations) ?: d.original_title,
                 runtimeMinutes = d.runtime?.takeIf { it > 0 },
                 genres = d.genres.map { it.name },
                 tagline = d.tagline?.takeIf { it.isNotBlank() },
+                cast = d.credits?.cast.orEmpty().sortedBy { it.order }.take(20).map { it.toCastMember() },
             )
         }
     }
+
+    override suspend fun getPerson(personId: Int) = tmdb.personDetails(personId, key).toPersonDetails()
 
     private val itemCache = ConcurrentHashMap<String, CatalogItem>()
 
@@ -265,6 +271,7 @@ class CatalogRepositoryImpl @Inject constructor(
                 year = d.first_air_date?.take(4)?.toIntOrNull(),
                 rating = d.vote_average.toFloat(),
                 genres = d.genres.map { it.name },
+                releaseDate = d.first_air_date,
             )
         } else {
             val d = tmdb.movieDetails(tmdbId, key, append = "")
@@ -279,6 +286,7 @@ class CatalogRepositoryImpl @Inject constructor(
                 year = d.release_date?.take(4)?.toIntOrNull(),
                 rating = d.vote_average.toFloat(),
                 genres = d.genres.map { it.name },
+                releaseDate = d.release_date,
             )
         }
         itemCache[cacheKey] = item
@@ -305,6 +313,7 @@ class CatalogRepositoryImpl @Inject constructor(
                 year = d.first_air_date?.take(4)?.toIntOrNull(),
                 rating = d.vote_average.toFloat(),
                 genres = d.genres.map { it.name },
+                releaseDate = d.first_air_date,
             )
             ShowAiring(
                 item = item,

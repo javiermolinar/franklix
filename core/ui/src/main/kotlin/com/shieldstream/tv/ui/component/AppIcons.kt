@@ -83,6 +83,10 @@ object AppIcons {
         "memory",
         "M15,9H9v6h6V9zM19,11h2v2h-2v2h-2v2h-2v2h-2v-2h-2v2H9v-2H7v-2H5v-2h2v-2H5v-2h2V9H5V7h2V5h2V3h2v2h2V3h2v2h2v2h2v2h-2v2zM17,7H7v10h10V7z",
     )
+    val Volume = icon(
+        "volume_up",
+        "M3,9v6h4l5,5V4L7,9H3zM16.5,12c0,-1.77 -1.02,-3.29 -2.5,-4.03v8.05c1.48,-0.73 2.5,-2.25 2.5,-4.02zM14,3.23v2.06c2.89,0.86 5,3.54 5,6.71s-2.11,5.85 -5,6.71v2.06c4.01,-0.91 7,-4.49 7,-8.77s-2.99,-7.86 -7,-8.77z",
+    )
     val SkipNext = icon("skip_next", "M6,18l8.5,-6L6,6v12zM16,6v12h2V6h-2z")
     val FastForward = icon("fast_forward", "M4,18l8.5,-6L4,6v12zM13,6v12l8.5,-6L13,6z")
 

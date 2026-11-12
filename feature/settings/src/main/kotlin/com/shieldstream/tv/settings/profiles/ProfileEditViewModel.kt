@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.shieldstream.tv.domain.ProfileRepository
+import com.shieldstream.tv.domain.TraktListImport
 import com.shieldstream.tv.domain.TraktRepository
 import com.shieldstream.tv.model.Category
 import com.shieldstream.tv.model.Profile
@@ -29,6 +30,9 @@ sealed interface ProfileEditUiState {
         val confirmDisconnect: Boolean = false,
         val confirmRemovePin: Boolean = false,
         val busy: Boolean = false,
+        val importBusy: Boolean = false,
+        val importResult: TraktListImport? = null,
+        val importFailed: Boolean = false,
     ) : ProfileEditUiState
 }
 
@@ -133,6 +137,22 @@ class ProfileEditViewModel @Inject constructor(
         return true
     }
 
+    fun importStremioList() {
+        val state = _uiState.value as? ProfileEditUiState.Editing ?: return
+        if (state.profile.traktUser == null || state.busy || state.importBusy) return
+        edit { it.copy(importBusy = true, importResult = null, importFailed = false) }
+        viewModelScope.launch {
+            val result = trakt.importStremioList(state.profile.id)
+            edit {
+                it.copy(
+                    importBusy = false,
+                    importResult = result.getOrNull(),
+                    importFailed = result.isFailure,
+                )
+            }
+        }
+    }
+
     fun disconnectTrakt() {
         val state = _uiState.value as? ProfileEditUiState.Editing ?: return
         if (!state.confirmDisconnect) {
@@ -142,7 +162,14 @@ class ProfileEditViewModel @Inject constructor(
         edit { it.copy(busy = true, confirmDisconnect = false) }
         viewModelScope.launch {
             trakt.disconnect(state.profile.id)
-            edit { it.copy(busy = false, profile = it.profile.copy(traktUser = null)) }
+            edit {
+                it.copy(
+                    busy = false,
+                    profile = it.profile.copy(traktUser = null),
+                    importResult = null,
+                    importFailed = false,
+                )
+            }
         }
     }
 

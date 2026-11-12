@@ -231,6 +231,12 @@
     <string name="settings_this_profile">this profile</string>
     <string name="settings_trakt_disconnect_user">Press OK again to disconnect @%1$s</string>
     <string name="settings_trakt_connected_user">Trakt: connected as @%1$s</string>
+    <string name="settings_import_stremio_title">Import Stremio My List</string>
+    <string name="settings_import_stremio_busy">Importing Stremio My List…</string>
+    <string name="settings_import_stremio_explanation">Add missing movies and shows from the Trakt personal list. Existing Franklix entries stay unchanged.</string>
+    <string name="settings_import_stremio_failed">Couldn\'t import Stremio My List. Try again.</string>
+    <string name="settings_import_stremio_up_to_date">My List is already up to date.</string>
+    <string name="settings_import_stremio_success">Added %1$d movies and %2$d shows to My List.</string>
     <string name="settings_torrentio_debrid_explanation">%1$s works through Torrentio and Peerflix, like in Stremio: your key is sent to those addons so they can check the cache and request links. Real-Debrid, on the other hand, connects directly.</string>
     <string name="settings_version">Version %1$s</string>
     <string name="settings_get_key_at">%1$s · get it at %2$s</string>

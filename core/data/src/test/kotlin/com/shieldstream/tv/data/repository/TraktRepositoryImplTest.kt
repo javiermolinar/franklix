@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import com.shieldstream.tv.data.security.TokenStore
 import com.shieldstream.tv.domain.MyListChange
+import com.shieldstream.tv.domain.MyListEntry
 import com.shieldstream.tv.domain.MyListRepository
 import com.shieldstream.tv.domain.ProfileRepository
 import com.shieldstream.tv.domain.ScrobbleAction
@@ -16,6 +17,7 @@ import com.shieldstream.tv.strings.Texts
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -233,6 +235,85 @@ class TraktRepositoryImplTest {
         }
 
         assertTrue("removal was not sent to the originating profile", removalSent.await(1, TimeUnit.SECONDS))
+    }
+
+    @Test
+    fun `personal list import adds only missing movies and shows without removals`() {
+        val fixture = fixture(expiresAt = System.currentTimeMillis() + 86_400_000)
+        every { fixture.myList.entries } returns MutableStateFlow(
+            listOf(MyListEntry(MediaType.MOVIE, "1", addedAt = 1L)),
+        )
+        val imported = mutableListOf<MyListEntry>()
+        val removed = mutableListOf<String>()
+        every { fixture.myList.importRemote(any(), any()) } answers {
+            imported += firstArg<List<MyListEntry>>()
+            removed += secondArg<Collection<String>>()
+        }
+        coEvery { fixture.client.get("/users/me/lists", "old-access") } returns TraktResponse(
+            200,
+            JsonArray(listOf(personalList(id = 7))),
+        )
+        coEvery { fixture.client.get("/users/me/lists/7/items?page=1&limit=100", "old-access") } returns TraktResponse(
+            200,
+            JsonArray(listOf(
+                personalListItem("movie", 1),
+                personalListItem("movie", 2),
+                personalListItem("show", 3),
+                personalListItem("episode", 4),
+            )),
+        )
+
+        val result = runBlocking { fixture.repository.importStremioList(PROFILE) }.getOrThrow()
+
+        assertEquals(1, result.moviesAdded)
+        assertEquals(1, result.showsAdded)
+        assertEquals(listOf("MOVIE_2", "TV_3"), imported.map { it.key })
+        assertTrue(removed.isEmpty())
+    }
+
+    @Test
+    fun `personal list import reads every page`() {
+        val fixture = fixture(expiresAt = System.currentTimeMillis() + 86_400_000)
+        coEvery { fixture.client.get("/users/me/lists", "old-access") } returns TraktResponse(
+            200,
+            JsonArray(listOf(personalList(id = 7))),
+        )
+        coEvery { fixture.client.get("/users/me/lists/7/items?page=1&limit=100", "old-access") } returns TraktResponse(
+            200,
+            JsonArray((1..100).map { personalListItem("movie", it) }),
+        )
+        coEvery { fixture.client.get("/users/me/lists/7/items?page=2&limit=100", "old-access") } returns TraktResponse(
+            200,
+            JsonArray(listOf(personalListItem("show", 101))),
+        )
+
+        val result = runBlocking { fixture.repository.importStremioList(PROFILE) }.getOrThrow()
+
+        assertEquals(100, result.moviesAdded)
+        assertEquals(1, result.showsAdded)
+    }
+
+    @Test
+    fun `personal list import fails without changing my list when list is absent`() {
+        val fixture = fixture(expiresAt = System.currentTimeMillis() + 86_400_000)
+        coEvery { fixture.client.get("/users/me/lists", "old-access") } returns TraktResponse(200, JsonArray(emptyList()))
+
+        val result = runBlocking { fixture.repository.importStremioList(PROFILE) }
+
+        assertTrue(result.isFailure)
+        verify(exactly = 0) { fixture.myList.importRemote(any(), any()) }
+    }
+
+    private fun personalList(id: Int) = buildJsonObject {
+        put("name", "Stremio My List")
+        put("ids", buildJsonObject { put("trakt", id) })
+    }
+
+    private fun personalListItem(type: String, tmdbId: Int) = buildJsonObject {
+        put("type", type)
+        val field = if (type == "show") "show" else type
+        put(field, buildJsonObject { put("ids", buildJsonObject { put("tmdb", tmdbId) }) })
+        put("listed_at", "2024-01-02T03:04:05.000Z")
     }
 
     private fun fixture(expiresAt: Long): Fixture {

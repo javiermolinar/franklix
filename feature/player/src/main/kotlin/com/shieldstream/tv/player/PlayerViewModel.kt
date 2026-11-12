@@ -118,6 +118,8 @@ class PlayerViewModel @Inject constructor(
     private val _skipPrompt = MutableStateFlow<SkipPromptUiState>(SkipPromptUiState.Hidden)
     val skipPrompt: StateFlow<SkipPromptUiState> = _skipPrompt.asStateFlow()
     private val nextSnapshot = playbackSnapshot?.next
+    val hasNextEpisode: Boolean = nextSnapshot != null
+    val nextEpisodeLabel: String? = nextSnapshot?.label
     private val _nextUp = MutableStateFlow<NextUpUiState>(NextUpUiState.Hidden)
     val nextUp: StateFlow<NextUpUiState> = _nextUp.asStateFlow()
     private val _goNext = MutableSharedFlow<Unit>(extraBufferCapacity = 1)

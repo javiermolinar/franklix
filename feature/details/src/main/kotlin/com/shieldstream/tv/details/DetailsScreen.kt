@@ -4,7 +4,6 @@ import com.shieldstream.tv.ui.theme.AppColors
 import com.shieldstream.tv.ui.theme.AppShapes
 import com.shieldstream.tv.strings.R as StringsR
 import com.shieldstream.tv.strings.localizedStringResource
-import com.shieldstream.tv.domain.SourceProvider
 import com.shieldstream.tv.domain.TraktRatingTarget
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
@@ -35,9 +34,11 @@ import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -49,6 +50,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
@@ -81,10 +83,10 @@ import androidx.lifecycle.repeatOnLifecycle
 import coil.compose.AsyncImage
 import com.shieldstream.tv.domain.NewEpisodes
 import com.shieldstream.tv.model.CatalogDetails
+import com.shieldstream.tv.model.CastMember
 import com.shieldstream.tv.model.Episode
 import com.shieldstream.tv.model.Lang
 import com.shieldstream.tv.strings.localizedCode
-import com.shieldstream.tv.strings.sectionResource
 import com.shieldstream.tv.model.HdrType
 import com.shieldstream.tv.model.StreamSource
 import com.shieldstream.tv.model.WatchProgress
@@ -100,7 +102,9 @@ import com.shieldstream.tv.ui.component.ProvidePivotScroll
 import com.shieldstream.tv.ui.component.TvButton
 import com.shieldstream.tv.ui.component.formatEpisodeDate
 import com.shieldstream.tv.ui.component.onBackKey
+import com.shieldstream.tv.ui.component.requestFocusWithRetry
 import com.shieldstream.tv.ui.component.tvClickable
+import kotlinx.coroutines.launch
 import java.util.Locale
 
 private val Green = AppColors.Success
@@ -135,6 +139,7 @@ internal fun upcomingEpisodeDate(airDate: String?, today: String): String? =
 fun DetailsScreen(
     onBack: () -> Unit,
     onPlay: () -> Unit,
+    onOpenActor: (Int) -> Unit,
     viewModel: DetailsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -163,7 +168,7 @@ fun DetailsScreen(
                 color = Color.White,
                 modifier = Modifier.align(Alignment.Center),
             )
-            is DetailsUiState.Content -> DetailsContent(s, viewModel, onBack)
+            is DetailsUiState.Content -> DetailsContent(s, viewModel, onBack, onOpenActor)
         }
     }
 }
@@ -173,6 +178,7 @@ private fun DetailsContent(
     state: DetailsUiState.Content,
     viewModel: DetailsViewModel,
     onBack: () -> Unit,
+    onOpenActor: (Int) -> Unit,
 ) {
     var panelOpen by remember { mutableStateOf(false) }
     var actionsOpen by remember { mutableStateOf(false) }
@@ -203,6 +209,8 @@ private fun DetailsContent(
     }
 
     val item = state.details.item
+    val scrollState = rememberScrollState()
+    val scrollScope = rememberCoroutineScope()
 
     Box(Modifier.fillMaxSize().onBackKey(enabled = panelOpen && !actionsOpen) { panelOpen = false }) {
         AsyncImage(
@@ -230,7 +238,7 @@ private fun DetailsContent(
         Column(
             Modifier
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(scrollState)
                 .padding(top = if (state.isSeries) 24.dp else 44.dp, bottom = 72.dp),
         ) {
             InfoBlock(
@@ -245,6 +253,7 @@ private fun DetailsContent(
                     panelOpen = true
                 },
                 onOpenActions = { actionsOpen = true },
+                onScrollToTop = { scrollScope.launch { scrollState.scrollTo(0) } },
                 modifier = Modifier.padding(start = 56.dp, end = 56.dp),
             )
 
@@ -256,6 +265,15 @@ private fun DetailsContent(
                     onSeason = { viewModel.selectSeason(it) },
                     onEpisode = { viewModel.playEpisode(it) },
                     onEpisodeLongPress = { episodeMenu = it },
+                )
+            }
+
+            if (state.details.cast.isNotEmpty()) {
+                Spacer(Modifier.height(20.dp))
+                CastRow(
+                    cast = state.details.cast,
+                    interactive = !panelOpen && !actionsOpen && episodeMenu == null,
+                    onOpenActor = onOpenActor,
                 )
             }
         }
@@ -274,7 +292,6 @@ private fun DetailsContent(
                     viewModel.playSource(source)
                 },
                 isBlocked = viewModel::isBlocked,
-                onToggleSpanishOnly = viewModel::toggleSpanishOnly,
             )
         }
         if (actionsOpen) {
@@ -345,6 +362,72 @@ private fun DetailsContent(
 }
 
 @Composable
+private fun CastRow(
+    cast: List<CastMember>,
+    interactive: Boolean,
+    onOpenActor: (Int) -> Unit,
+) {
+    Text(
+        text = localizedStringResource(StringsR.string.details_cast),
+        color = Color.White,
+        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+        modifier = Modifier.padding(start = 56.dp),
+    )
+    LazyRow(
+        contentPadding = PaddingValues(horizontal = 56.dp, vertical = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        items(cast, key = { it.id }) { actor ->
+            ActorCard(
+                actor = actor,
+                enabled = interactive,
+                onClick = { onOpenActor(actor.id) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun ActorCard(actor: CastMember, enabled: Boolean, onClick: () -> Unit) {
+    var focused by remember { mutableStateOf(false) }
+    val foreground = if (focused) Color.Black else Color.White
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .width(120.dp)
+            .background(if (focused) Color.White else Color.White.copy(alpha = 0.06f), AppShapes.Control)
+            .onFocusChanged { focused = it.isFocused }
+            .tvClickable(enabled = enabled, onClick = onClick)
+            .padding(8.dp),
+    ) {
+        AsyncImage(
+            model = actor.profileUrl,
+            contentDescription = actor.name,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier
+                .size(84.dp)
+                .clip(CircleShape)
+                .background(AppColors.Placeholder),
+        )
+        Spacer(Modifier.height(7.dp))
+        Text(
+            text = actor.name,
+            color = foreground,
+            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Text(
+            text = actor.character,
+            color = foreground.copy(alpha = 0.65f),
+            style = MaterialTheme.typography.bodySmall,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+@Composable
 private fun InfoBlock(
     details: CatalogDetails,
     state: DetailsUiState.Content,
@@ -354,10 +437,20 @@ private fun InfoBlock(
     onPlayFromStart: () -> Unit,
     onOpenSources: () -> Unit,
     onOpenActions: () -> Unit,
+    onScrollToTop: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val item = details.item
-    Column(modifier.widthIn(max = 600.dp)) {
+    Column(
+        modifier
+            .onPreviewKeyEvent { event ->
+                if (event.type == KeyEventType.KeyDown && event.key == Key.DirectionUp) {
+                    onScrollToTop()
+                    true
+                } else false
+            }
+            .widthIn(max = 600.dp),
+    ) {
         if (details.logoUrl != null) {
             AsyncImage(
                 model = details.logoUrl,
@@ -1073,6 +1166,26 @@ private fun EpisodeCard(
                     modifier = Modifier.fillMaxSize(),
                 )
             }
+            Box(
+                Modifier
+                    .align(Alignment.BottomStart)
+                    .fillMaxWidth()
+                    .background(
+                        Brush.verticalGradient(
+                            0f to Color.Transparent,
+                            1f to Color.Black.copy(alpha = 0.88f),
+                        ),
+                    )
+                    .padding(start = 10.dp, end = 10.dp, top = 22.dp, bottom = 9.dp),
+            ) {
+                Text(
+                    text = "${episode.number}. ${episode.title}",
+                    color = if (selected || focused) Color.White else Color.White.copy(alpha = 0.92f),
+                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
             if (progress?.isWatched == true) {
                 Box(
                     Modifier
@@ -1089,7 +1202,7 @@ private fun EpisodeCard(
                 WatchBar(
                     fraction = progress.fraction,
                     modifier = Modifier
-                        .align(Alignment.BottomCenter)
+                        .align(Alignment.TopCenter)
                         .fillMaxWidth()
                         .padding(horizontal = 8.dp, vertical = 8.dp),
                 )
@@ -1108,14 +1221,6 @@ private fun EpisodeCard(
                 }
             }
         }
-        Spacer(Modifier.height(8.dp))
-        Text(
-            text = "${episode.number}. ${episode.title}",
-            color = if (selected || focused) Color.White else Color.White.copy(alpha = 0.8f),
-            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
         val today = remember { NewEpisodes.dateWindow(System.currentTimeMillis()).second }
         val releaseDate = remember(episode.airDate, today, Lang.current) {
             formatEpisodeDate(upcomingEpisodeDate(episode.airDate, today), includeYear = true)
@@ -1141,39 +1246,29 @@ private fun SourcesPanel(
     state: DetailsUiState.Content,
     onPick: (StreamSource) -> Unit,
     isBlocked: (StreamSource) -> Boolean,
-    onToggleSpanishOnly: () -> Unit,
 ) {
     val firstRequester = remember { FocusRequester() }
+    val listState = rememberLazyListState()
     val allSources = (state.sources as? SourcesState.Ready)?.sources.orEmpty()
     var showAll by remember { mutableStateOf(false) }
-    val sources = if (showAll) allSources else state.sourceExclusions.filter(allSources)
-    val order = SourceProvider.entries.map { localizedStringResource(it.sectionResource) }.distinct()
+    val spanishOnly = state.spanishOnly
     val pending = (state.sources as? SourcesState.Ready)?.pending.orEmpty()
     val unavailable = (state.sources as? SourcesState.Ready)?.unavailable.orEmpty() +
         pending.associateWith { localizedStringResource(StringsR.string.details_searching) }
-    val spanishFirst = state.spanishFirst
-    val spanishOnly = state.spanishOnly
-    val groups = remember(sources, unavailable, spanishFirst, spanishOnly) {
-        val byProvider = sources.groupBy { it.provider }
-        (byProvider.keys + unavailable.keys).distinct().sortedBy { order.indexOf(it) }.map { section ->
-            section to byProvider[section].orEmpty()
-                .filter { !spanishOnly || it.advertisesSpanishAudio }
-                .sortedWith(
-                compareByDescending<StreamSource> { if (spanishFirst) it.spanishAudioScore else 0 }
-                    .thenByDescending { it.quality.rank }
-                    .thenByDescending { it.sizeBytes },
-            )
-        }
+    val eligibleSources = (if (showAll) allSources else state.sourceExclusions.filter(allSources))
+        .filter { !spanishOnly || it.advertisesSpanishAudio }
+    val providers = (eligibleSources.map { it.provider }.filter { it.isNotBlank() } + unavailable.keys).distinct()
+    var selectedProvider by remember { mutableStateOf<String?>(null) }
+    val activeProvider = selectedProvider?.takeIf { it in providers }
+    val sources = eligibleSources.filter { activeProvider == null || it.provider == activeProvider }
+    val visibleUnavailable = unavailable.filterKeys { activeProvider == null || it == activeProvider }
+    LaunchedEffect(providers) {
+        if (selectedProvider != null && selectedProvider !in providers) selectedProvider = null
     }
-    var open by remember { mutableStateOf(emptySet<String>()) }
-    var autoOpened by remember { mutableStateOf(false) }
-    LaunchedEffect(groups) {
-        if (!autoOpened) groups.firstOrNull { it.second.isNotEmpty() }?.let { open = setOf(it.first); autoOpened = true }
-    }
-    LaunchedEffect(sources.isNotEmpty()) {
+    LaunchedEffect(activeProvider, sources.firstOrNull()?.let { it.provider to it.id }) {
         if (sources.isNotEmpty()) {
-            withFrameNanos { }
-            runCatching { firstRequester.requestFocus() }
+            listState.scrollToItem(0)
+            firstRequester.requestFocusWithRetry()
         }
     }
 
@@ -1193,18 +1288,36 @@ private fun SourcesPanel(
                     style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.SemiBold),
                     modifier = Modifier.weight(1f),
                 )
-                SpanishOnlyChip(enabled = spanishOnly, onClick = onToggleSpanishOnly)
             }
             state.selectedEpisode?.takeIf { state.isSeries }?.let {
                 Text("${it.localizedCode()} · ${it.title}", color = Grey, style = MaterialTheme.typography.bodyMedium)
             }
             if (state.sources is SourcesState.Ready) {
+                if (providers.size > 1) {
+                    Spacer(Modifier.height(12.dp))
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        item(key = "all-providers") {
+                            SourcePanelChip(
+                                text = localizedStringResource(StringsR.string.details_all_providers),
+                                highlighted = activeProvider == null,
+                                onClick = { selectedProvider = null },
+                            )
+                        }
+                        items(providers, key = { it }) { provider ->
+                            SourcePanelChip(
+                                text = provider,
+                                highlighted = activeProvider == provider,
+                                onClick = { selectedProvider = provider },
+                            )
+                        }
+                    }
+                }
                 Spacer(Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = localizedStringResource(
                             StringsR.string.details_sources_filtered_count,
-                            sources.count { !spanishOnly || it.advertisesSpanishAudio },
+                            sources.size,
                             allSources.size,
                         ),
                         color = Grey,
@@ -1221,7 +1334,7 @@ private fun SourcesPanel(
                 SourcesState.Idle -> Text(localizedStringResource(StringsR.string.details_pick_an_episode_first), color = Grey)
                 SourcesState.Loading -> Text(localizedStringResource(StringsR.string.details_finding_sources), color = Grey)
                 is SourcesState.Error -> Text(s.message, color = Grey)
-                is SourcesState.Ready -> if (groups.all { it.second.isEmpty() } && s.pending.isEmpty()) {
+                is SourcesState.Ready -> if (sources.isEmpty() && visibleUnavailable.isEmpty()) {
                     Text(
                         when {
                             spanishOnly -> localizedStringResource(StringsR.string.details_no_spanish_sources_available_for_this_profile)
@@ -1233,24 +1346,30 @@ private fun SourcesPanel(
                     )
                 } else {
                     LazyColumn(
+                        state = listState,
                         verticalArrangement = Arrangement.spacedBy(6.dp),
                         contentPadding = PaddingValues(bottom = 32.dp),
                     ) {
-                        groups.forEachIndexed { index, (name, list) ->
-                            item(key = "h:$name") {
-                                ProviderHeader(
-                                    name = name,
-                                    count = list.size,
-                                    cached = list.count { it.isCached },
-                                    expanded = name in open,
-                                    note = unavailable[name].takeIf { list.isEmpty() }
-                                        ?: localizedStringResource(StringsR.string.details_none_in_spanish).takeIf { list.isEmpty() && spanishOnly },
-                                    onClick = { if (list.isNotEmpty()) open = if (name in open) open - name else open + name },
-                                    modifier = if (index == 0) Modifier.focusRequester(firstRequester) else Modifier,
-                                )
-                            }
-                            if (name in open) {
-                                items(list, key = { it.id }) { source -> SourceRow(source = source, blocked = isBlocked(source), onClick = { onPick(source) }) }
+                        itemsIndexed(sources, key = { _, source -> "${source.provider}:${source.id}" }) { index, source ->
+                            SourceRow(
+                                source = source,
+                                blocked = isBlocked(source),
+                                onClick = { onPick(source) },
+                                modifier = if (index == 0) Modifier.focusRequester(firstRequester) else Modifier,
+                            )
+                        }
+                        if (visibleUnavailable.isNotEmpty()) {
+                            item(key = "provider-status") {
+                                Column(Modifier.padding(top = 8.dp)) {
+                                    visibleUnavailable.forEach { (provider, note) ->
+                                        Text(
+                                            text = "$provider · $note",
+                                            color = Grey,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            modifier = Modifier.padding(vertical = 4.dp),
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
@@ -1258,15 +1377,6 @@ private fun SourcesPanel(
             }
         }
     }
-}
-
-@Composable
-private fun SpanishOnlyChip(enabled: Boolean, onClick: () -> Unit) {
-    SourcePanelChip(
-        text = if (enabled) "✓ " + localizedStringResource(StringsR.string.details_spanish_only) else localizedStringResource(StringsR.string.details_spanish_only),
-        highlighted = enabled,
-        onClick = onClick,
-    )
 }
 
 @Composable
@@ -1300,42 +1410,6 @@ private fun SourcePanelChip(text: String, highlighted: Boolean, onClick: () -> U
             .tvClickable(onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 7.dp),
     )
-}
-
-@Composable
-private fun ProviderHeader(name: String, count: Int, cached: Int, expanded: Boolean, note: String?, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    var focused by remember { mutableStateOf(false) }
-    val color = if (focused) Color.Black else Color.White
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = modifier
-            .fillMaxWidth()
-            .background(if (focused) Color.White else Color.White.copy(alpha = 0.10f), AppShapes.Control)
-            .onFocusChanged { focused = it.isFocused }
-            .tvClickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-    ) {
-        Text(name, color = color, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold), modifier = Modifier.weight(1f))
-        val secondary = if (focused) Color.Black.copy(alpha = 0.7f) else Grey
-        Text(
-            note ?: localizedStringResource(StringsR.string.details_source_count, count),
-            color = secondary,
-            style = MaterialTheme.typography.bodyMedium,
-        )
-        if (note == null && cached > 0) {
-            // Same bolt icon and colour as the cached source rows, instead of a yellow emoji.
-            Text("  ·  ", color = secondary, style = MaterialTheme.typography.bodyMedium)
-            Icon(
-                AppIcons.Bolt,
-                contentDescription = localizedStringResource(StringsR.string.details_cached),
-                tint = if (focused) CachedFocused else Green,
-                modifier = Modifier.size(16.dp),
-            )
-            Spacer(Modifier.width(3.dp))
-            Text(cached.toString(), color = secondary, style = MaterialTheme.typography.bodyMedium)
-        }
-        if (note == null) Text(if (expanded) "   ▾" else "   ›", color = color, style = MaterialTheme.typography.titleMedium)
-    }
 }
 
 @Composable
@@ -1392,6 +1466,16 @@ private fun SourceRow(source: StreamSource, blocked: Boolean, onClick: () -> Uni
                 style = MaterialTheme.typography.bodySmall,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
+            )
+        }
+        if (source.provider.isNotBlank()) {
+            Text(
+                text = source.provider,
+                color = sub,
+                style = MaterialTheme.typography.bodySmall,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(start = 8.dp).widthIn(max = 110.dp),
             )
         }
     }

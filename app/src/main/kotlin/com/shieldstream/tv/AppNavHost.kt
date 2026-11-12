@@ -13,6 +13,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.shieldstream.tv.details.DetailsScreen
+import com.shieldstream.tv.details.PersonScreen
 import com.shieldstream.tv.domain.EpisodeTarget
 import com.shieldstream.tv.domain.SelectedContentHolder
 import com.shieldstream.tv.home.MainScreen
@@ -153,6 +154,22 @@ fun AppNavHost(
             DetailsScreen(
                 onBack = { if (entry.isVisible()) navController.popBackStack() },
                 onPlay = { if (entry.isVisible()) navController.navigate("player") },
+                onOpenActor = { personId ->
+                    if (entry.isVisible()) navController.navigate("person/$personId")
+                },
+            )
+        }
+        composable("person/{personId}") { entry ->
+            val personId = entry.arguments?.getString("personId")?.toIntOrNull() ?: return@composable
+            PersonScreen(
+                personId = personId,
+                onBack = { if (entry.isVisible()) navController.popBackStack() },
+                onOpenItem = { item ->
+                    if (entry.isVisible()) {
+                        holder.selectItem(item)
+                        navController.navigate("details")
+                    }
+                },
             )
         }
         composable("player") {
@@ -203,6 +220,6 @@ fun AppNavHost(
     }
 }
 
-private val WATCH_NEXT_INTERRUPT_ROUTES = setOf("details", "player", "settings")
+private val WATCH_NEXT_INTERRUPT_ROUTES = setOf("details", "person/{personId}", "player", "settings")
 
 private fun NavBackStackEntry.isVisible() = lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)

@@ -181,12 +181,6 @@ class DetailsViewModel @Inject constructor(
 
     fun isBlocked(source: StreamSource): Boolean = source.resolveUrl == null && realDebridRepository.isBlocked(source.infoHash)
 
-    fun toggleSpanishOnly() {
-        val enabled = !(content()?.spanishOnly ?: return)
-        updateContent { it.copy(spanishOnly = enabled) }
-        viewModelScope.launch { settings.setSpanishOnlySources(enabled) }
-    }
-
     fun toggleMyList() {
         val item = content()?.details?.item ?: return
         if (myList.contains(item.type, item.id)) myList.remove(item.type, item.id) else myList.add(item.type, item.id)

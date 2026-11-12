@@ -121,6 +121,35 @@ data class TmdbMovieDetailDto(
     val images: TmdbImagesDto? = null,
     val translations: TmdbTranslationsDto? = null,
     val release_dates: TmdbReleaseDatesDto? = null,
+    val credits: TmdbCreditsDto? = null,
+)
+
+@Serializable
+data class TmdbCreditsDto(
+    val cast: List<TmdbCastDto> = emptyList(),
+)
+
+@Serializable
+data class TmdbCastDto(
+    val id: Int = 0,
+    val name: String = "",
+    val character: String = "",
+    val profile_path: String? = null,
+    val order: Int = 0,
+)
+
+@Serializable
+data class TmdbPersonDto(
+    val id: Int = 0,
+    val name: String = "",
+    val biography: String = "",
+    val profile_path: String? = null,
+    val combined_credits: TmdbCombinedCreditsDto? = null,
+)
+
+@Serializable
+data class TmdbCombinedCreditsDto(
+    val cast: List<TmdbSearchResultDto> = emptyList(),
 )
 
 @Serializable
@@ -152,6 +181,7 @@ data class TmdbTvDetailDto(
     val original_language: String? = null,
     val last_episode_to_air: TmdbEpisodeDto? = null,
     val next_episode_to_air: TmdbEpisodeDto? = null,
+    val credits: TmdbCreditsDto? = null,
 )
 
 @Serializable

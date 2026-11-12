@@ -11,6 +11,7 @@ data class CatalogItem(
     val year: Int?,
     val rating: Float?,
     val genres: List<String> = emptyList(),
+    val releaseDate: String? = null,
 ) {
     val key: String get() = "${type.name}_$id"
 }

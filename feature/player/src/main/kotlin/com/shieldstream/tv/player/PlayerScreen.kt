@@ -56,6 +56,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
@@ -83,6 +84,7 @@ import androidx.media3.ui.PlayerView
 import com.shieldstream.tv.ui.component.AppIcons
 import com.shieldstream.tv.ui.component.PlaybackMediaBadges
 import com.shieldstream.tv.ui.component.onBackKey
+import com.shieldstream.tv.ui.component.tvClickable
 import kotlinx.coroutines.delay
 
 
@@ -170,19 +172,22 @@ fun PlayerScreen(
     val thumbs = rememberSeekThumbnails(mediaUri, pqHdr, active = scrubbing)
     LaunchedEffect(player) { scrubMs = null }
 
+    val focusRequester = remember { FocusRequester() }
+    val nextEpisodeRequester = remember { FocusRequester() }
+    var nextEpisodeFocused by remember { mutableStateOf(false) }
+
     fun showControls() {
         controlsVisible = true
         interactions++
     }
 
-    LaunchedEffect(controlsVisible, interactions, playback.isPlaying) {
-        if (controlsVisible && playback.isPlaying) {
+    LaunchedEffect(controlsVisible, interactions, playback.isPlaying, nextEpisodeFocused) {
+        if (controlsVisible && playback.isPlaying && !nextEpisodeFocused) {
             delay(4_000)
             controlsVisible = false
         }
     }
 
-    val focusRequester = remember { FocusRequester() }
     LaunchedEffect(tracksOpen) { if (!tracksOpen) runCatching { focusRequester.requestFocus() } }
 
     val skipTarget = (skipPrompt as? SkipPromptUiState.Showing)?.targetMs
@@ -315,7 +320,14 @@ fun PlayerScreen(
                 }
                 true
             }
-            Key.DirectionUp, Key.Info -> { showControls(); true }
+            Key.DirectionUp, Key.Info -> {
+                if (event.key == Key.DirectionUp && controlsVisible && viewModel.hasNextEpisode && scrubMs == null) {
+                    runCatching { nextEpisodeRequester.requestFocus() }
+                } else {
+                    showControls()
+                }
+                true
+            }
             else -> false
         }
     }
@@ -390,6 +402,15 @@ fun PlayerScreen(
                     scrubMs = scrubMs,
                     thumbs = thumbs,
                     thumbnailsEnabled = thumbnailsEnabled,
+                    hasNextEpisode = viewModel.hasNextEpisode,
+                    nextEpisodeLabel = viewModel.nextEpisodeLabel.orEmpty(),
+                    onNextEpisode = viewModel::playNextNow,
+                    nextEpisodeRequester = nextEpisodeRequester,
+                    onNextFocusChanged = { focused ->
+                        nextEpisodeFocused = focused
+                        if (focused) showControls()
+                    },
+                    onNextDown = { runCatching { focusRequester.requestFocus() } },
                 )
             }
             seekFeedback?.let {
@@ -542,13 +563,19 @@ private fun ControlsOverlay(
     scrubMs: Long?,
     thumbs: SeekThumbnails?,
     thumbnailsEnabled: Boolean,
+    hasNextEpisode: Boolean,
+    nextEpisodeLabel: String,
+    onNextEpisode: () -> Unit,
+    nextEpisodeRequester: FocusRequester,
+    onNextFocusChanged: (Boolean) -> Unit,
+    onNextDown: () -> Unit,
 ) {
     val shownMs = scrubMs ?: playback.positionMs
     Box(Modifier.fillMaxSize()) {
         Box(
             Modifier
                 .fillMaxWidth()
-                .height(150.dp)
+                .height(180.dp)
                 .background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.85f), Color.Transparent))),
         )
         Column(
@@ -564,6 +591,17 @@ private fun ControlsOverlay(
             videoInfo?.let {
                 Spacer(Modifier.height(8.dp))
                 PlaybackMediaBadges(it)
+            }
+        }
+        if (hasNextEpisode) {
+            Box(Modifier.align(Alignment.TopEnd).padding(top = 28.dp, end = 48.dp)) {
+                NextEpisodeControl(
+                    episodeLabel = nextEpisodeLabel,
+                    onClick = onNextEpisode,
+                    focusRequester = nextEpisodeRequester,
+                    onFocusChanged = onNextFocusChanged,
+                    onDown = onNextDown,
+                )
             }
         }
 
@@ -608,6 +646,87 @@ private fun ControlsOverlay(
                     text = if (playback.durationMs > 0) "-" + formatTime(playback.durationMs - shownMs) else "",
                     color = Color.White,
                     style = MaterialTheme.typography.titleMedium,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun NextEpisodeControl(
+    episodeLabel: String,
+    onClick: () -> Unit,
+    focusRequester: FocusRequester,
+    onFocusChanged: (Boolean) -> Unit,
+    onDown: () -> Unit,
+) {
+    var focused by remember { mutableStateOf(false) }
+    val foreground = if (focused) Color.Black else Color.White
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .widthIn(max = 360.dp)
+            .focusRequester(focusRequester)
+            .onFocusChanged {
+                focused = it.isFocused
+                onFocusChanged(it.isFocused)
+            }
+            .clip(AppShapes.Control)
+            .background(if (focused) Color.White else Color.Black.copy(alpha = 0.68f))
+            .border(
+                width = 1.dp,
+                color = if (focused) Color.White else Color.White.copy(alpha = 0.24f),
+                shape = AppShapes.Control,
+            )
+            .onKeyEvent { event ->
+                if (event.type != KeyEventType.KeyDown) return@onKeyEvent false
+                when (event.key) {
+                    Key.DirectionCenter, Key.Enter, Key.NumPadEnter -> {
+                        onClick()
+                        true
+                    }
+                    Key.DirectionDown -> {
+                        onDown()
+                        true
+                    }
+                    else -> false
+                }
+            }
+            .tvClickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+    ) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .size(42.dp)
+                .background(
+                    if (focused) Color.Black.copy(alpha = 0.08f) else AppColors.Accent.copy(alpha = 0.20f),
+                    AppShapes.Control,
+                ),
+        ) {
+            Icon(
+                imageVector = AppIcons.SkipNext,
+                contentDescription = null,
+                tint = if (focused) Color.Black else AppColors.Accent,
+                modifier = Modifier.size(25.dp),
+            )
+        }
+        Spacer(Modifier.width(12.dp))
+        Column {
+            Text(
+                text = localizedStringResource(StringsR.string.player_next_episode).uppercase(),
+                color = foreground.copy(alpha = 0.62f),
+                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                maxLines = 1,
+            )
+            if (episodeLabel.isNotBlank()) {
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    text = episodeLabel,
+                    color = foreground,
+                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
         }

@@ -34,6 +34,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -601,6 +602,30 @@ class HomeViewModelsTest {
         viewModel.toggleHideCompleted()
         advanceUntilIdle()
         assertTrue(viewModel.uiState.value is MyListUiState.Empty)
+    }
+
+    @Test
+    fun `my list emits the first twenty items before loading the remainder`() = runTest {
+        val entries = (1..25).map { MyListEntry(MediaType.MOVIE, it.toString(), addedAt = it.toLong()) }
+        val allowRemaining = CompletableDeferred<Unit>()
+        val catalog = mockk<CatalogRepository>()
+        coEvery { catalog.getItem(MediaType.MOVIE, any()) } coAnswers {
+            val id = secondArg<String>()
+            if (id.toInt() > 20) allowRemaining.await()
+            item(id, MediaType.MOVIE, "Title")
+        }
+        val viewModel = MyListViewModel(
+            catalogRepository = catalog,
+            myList = mockk { every { this@mockk.entries } returns MutableStateFlow(entries) },
+            watchProgress = mockk { every { progress } returns MutableStateFlow(emptyMap()) },
+            episodeReleases = mockk(relaxed = true),
+            tracking = tracking(),
+        )
+        val first = viewModel.uiState.first { it is MyListUiState.Content }
+        assertEquals(20, (first as MyListUiState.Content).items.size)
+        allowRemaining.complete(Unit)
+        val final = viewModel.uiState.first { it is MyListUiState.Content && it.items.size == entries.size }
+        assertEquals(25, (final as MyListUiState.Content).items.size)
     }
 
     @Test

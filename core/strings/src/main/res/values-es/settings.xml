@@ -231,6 +231,12 @@
     <string name="settings_this_profile">este perfil</string>
     <string name="settings_trakt_disconnect_user">Pulsa OK otra vez para desconectar @%1$s</string>
     <string name="settings_trakt_connected_user">Trakt: conectado como @%1$s</string>
+    <string name="settings_import_stremio_title">Importar Mi lista de Stremio</string>
+    <string name="settings_import_stremio_busy">Importando Mi lista de Stremio…</string>
+    <string name="settings_import_stremio_explanation">Añade a Mi lista las películas y series que falten desde la lista personal de Trakt. No se elimina nada de Franklix.</string>
+    <string name="settings_import_stremio_failed">No se pudo importar Mi lista de Stremio. Inténtalo de nuevo.</string>
+    <string name="settings_import_stremio_up_to_date">Mi lista ya está actualizada.</string>
+    <string name="settings_import_stremio_success">Se añadieron %1$d películas y %2$d series a Mi lista.</string>
     <string name="settings_torrentio_debrid_explanation">%1$s funciona a través de Torrentio y Peerflix, como en Stremio: tu clave se envía a esos addons para que consulten la caché y pidan los enlaces. Real-Debrid, en cambio, se conecta directamente.</string>
     <string name="settings_version">Versión %1$s</string>
     <string name="settings_get_key_at">%1$s · consíguela en %2$s</string>

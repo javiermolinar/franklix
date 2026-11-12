@@ -14,6 +14,7 @@ import com.shieldstream.tv.domain.ScrobbleAction
 import com.shieldstream.tv.domain.TraktAuthPoll
 import com.shieldstream.tv.domain.TraktCredentials
 import com.shieldstream.tv.domain.TraktDeviceCode
+import com.shieldstream.tv.domain.TraktListImport
 import com.shieldstream.tv.domain.TraktRatingTarget
 import com.shieldstream.tv.domain.TraktRepository
 import com.shieldstream.tv.domain.WatchProgressRepository
@@ -165,6 +166,55 @@ class TraktRepositoryImpl @Inject constructor(
         return (response.body as? JsonArray).orEmpty().mapNotNull { element ->
             (element as? JsonObject)?.obj("ids")?.int("tmdb")?.toString()
         }.distinct()
+    }
+
+    override suspend fun importStremioList(profileId: String): Result<TraktListImport> = runCatching {
+        check(profiles.active.value.id == profileId) { "The selected profile is not active" }
+        syncMutex.withLock {
+            check(profiles.active.value.id == profileId) { "The selected profile is not active" }
+            val token = validToken(profileId) ?: throw TraktHttpException(401)
+            val listsResponse = client.get("/users/me/lists", token)
+            if (!listsResponse.ok) throw TraktHttpException(listsResponse.code)
+            val listId = (listsResponse.body as? JsonArray).orEmpty().firstNotNullOfOrNull { element ->
+                val list = element as? JsonObject ?: return@firstNotNullOfOrNull null
+                if (list.string("name") != STREMIO_LIST_NAME) return@firstNotNullOfOrNull null
+                list.obj("ids")?.int("trakt")
+            } ?: throw TraktHttpException(404)
+
+            val remote = linkedMapOf<String, MyListEntry>()
+            var page = 1
+            while (true) {
+                val response = client.get("/users/me/lists/$listId/items?page=$page&limit=$PERSONAL_LIST_PAGE_LIMIT", token)
+                if (!response.ok) throw TraktHttpException(response.code)
+                val items = (response.body as? JsonArray).orEmpty()
+                for (element in items) {
+                    val item = element as? JsonObject ?: continue
+                    val (type, field) = when (item.string("type")) {
+                        "movie" -> MediaType.MOVIE to "movie"
+                        "show" -> MediaType.TV to "show"
+                        else -> continue
+                    }
+                    val id = item.obj(field)?.obj("ids")?.int("tmdb") ?: continue
+                    val entry = MyListEntry(
+                        type = type,
+                        id = id.toString(),
+                        addedAt = TraktClient.parseDate(item.string("listed_at")) ?: 0L,
+                    )
+                    remote.putIfAbsent(entry.key, entry)
+                }
+                if (items.size < PERSONAL_LIST_PAGE_LIMIT) break
+                page++
+            }
+
+            val localKeys = myList.entries.value.map { it.key }.toSet()
+            val added = remote.values.filter { it.key !in localKeys }
+            check(profiles.active.value.id == profileId) { "The selected profile is not active" }
+            myList.importRemote(added, removedKeys = emptyList())
+            TraktListImport(
+                moviesAdded = added.count { it.type == MediaType.MOVIE },
+                showsAdded = added.count { it.type == MediaType.TV },
+            )
+        }
     }
 
     override suspend fun getRating(target: TraktRatingTarget): Int? {
@@ -615,6 +665,8 @@ class TraktRepositoryImpl @Inject constructor(
         const val MAX_UPLOAD_RESUMABLE = 20
         const val RECOMMENDATIONS_LIMIT = 40
         const val RATINGS_PAGE_LIMIT = 1000
+        const val PERSONAL_LIST_PAGE_LIMIT = 100
+        const val STREMIO_LIST_NAME = "Stremio My List"
     }
 }
 

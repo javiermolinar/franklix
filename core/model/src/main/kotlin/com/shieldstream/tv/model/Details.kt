@@ -10,6 +10,22 @@ data class CatalogDetails(
     val seasons: List<Season> = emptyList(),
     val latestEpisode: Episode? = null,
     val nextEpisode: Episode? = null,
+    val cast: List<CastMember> = emptyList(),
+)
+
+data class CastMember(
+    val id: Int,
+    val name: String,
+    val character: String,
+    val profileUrl: String?,
+)
+
+data class PersonDetails(
+    val id: Int,
+    val name: String,
+    val biography: String,
+    val profileUrl: String?,
+    val filmography: List<CatalogItem>,
 )
 
 data class Season(

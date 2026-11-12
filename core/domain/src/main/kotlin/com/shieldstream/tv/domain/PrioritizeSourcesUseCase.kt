@@ -25,14 +25,22 @@ class PrioritizeSourcesUseCase {
                 )
             }
             .sortedWith(
-                compareByDescending<StreamSource> { if (preferCached) it.isCached else true }
+                compareByDescending<StreamSource> { it.languages.isNotEmpty() || it.spanishAudioScore > 0 }
                     .thenByDescending { if (preferSpanish) it.spanishAudioScore else 0 }
+                    .thenByDescending { availabilityRank(it, preferCached) }
                     .thenBy { it.softwareDecode }
                     .thenByDescending { effectiveHdrRank(it.hdrType, supportedHdr) }
                     .thenByDescending { it.quality.rank }
                     .thenByDescending { it.seeders ?: 0 }
                     .thenByDescending { it.sizeBytes },
             )
+    }
+
+    private fun availabilityRank(source: StreamSource, preferCached: Boolean): Int = when {
+        source.isCached || source.directUrl != null || source.resolveUrl != null -> if (preferCached) 3 else 2
+        (source.seeders ?: 0) > 0 -> 2
+        source.seeders == null -> 1
+        else -> 0
     }
 
     private companion object {

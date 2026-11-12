@@ -4,6 +4,8 @@ import com.shieldstream.tv.model.MediaType
 import com.shieldstream.tv.network.dto.TmdbImageDto
 import com.shieldstream.tv.network.dto.TmdbImagesDto
 import com.shieldstream.tv.network.dto.TmdbMovieDto
+import com.shieldstream.tv.network.dto.TmdbCombinedCreditsDto
+import com.shieldstream.tv.network.dto.TmdbPersonDto
 import com.shieldstream.tv.network.dto.TmdbSearchResultDto
 import com.shieldstream.tv.network.dto.TmdbTvDto
 import org.junit.Assert.assertEquals
@@ -33,6 +35,7 @@ class TmdbMappersTest {
         assertEquals("https://image.tmdb.org/t/p/w342/poster.jpg", movie.posterUrl)
         assertEquals("https://image.tmdb.org/t/p/w1280/backdrop.jpg", movie.backdropUrl)
         assertEquals(2026, movie.year)
+        assertEquals("2026-02-03", movie.releaseDate)
         assertEquals(8.5f, movie.rating)
         assertEquals(MediaType.TV, tv.type)
         assertEquals(2025, tv.year)
@@ -52,6 +55,28 @@ class TmdbMappersTest {
         assertEquals("Show", show?.title)
         assertEquals(2024, show?.year)
         assertNull(TmdbSearchResultDto(media_type = "person").toCatalogItemOrNull())
+    }
+
+    @Test
+    fun `person mapping keeps movies and TV sorted by year and rejects other people`() {
+        val person = TmdbPersonDto(
+            id = 31,
+            name = "Actor",
+            biography = "Biography",
+            profile_path = "/actor.jpg",
+            combined_credits = TmdbCombinedCreditsDto(
+                cast = listOf(
+                    TmdbSearchResultDto(id = 1, media_type = "movie", title = "Old", release_date = "1999-01-01"),
+                    TmdbSearchResultDto(id = 2, media_type = "tv", name = "New", first_air_date = "2026-01-01"),
+                    TmdbSearchResultDto(id = 2, media_type = "tv", name = "New", first_air_date = "2026-01-01"),
+                    TmdbSearchResultDto(id = 3, media_type = "person", name = "Other"),
+                ),
+            ),
+        ).toPersonDetails()
+
+        assertEquals("https://image.tmdb.org/t/p/w185/actor.jpg", person.profileUrl)
+        assertEquals(listOf("New", "Old"), person.filmography.map { it.title })
+        assertEquals(listOf(MediaType.TV, MediaType.MOVIE), person.filmography.map { it.type })
     }
 
     @Test

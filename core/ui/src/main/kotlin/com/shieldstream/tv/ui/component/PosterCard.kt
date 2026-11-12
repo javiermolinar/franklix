@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import coil.compose.AsyncImage
 import com.shieldstream.tv.model.CatalogItem
+import com.shieldstream.tv.model.Lang
 import com.shieldstream.tv.strings.R
 import com.shieldstream.tv.strings.localizedPluralResource
 import com.shieldstream.tv.strings.localizedStringResource
@@ -137,6 +138,9 @@ fun CatalogPosterCard(
     onLongClick: (() -> Unit)? = null,
     newEpisodeCount: Int = 0,
 ) {
+    val releaseLabel = remember(item.releaseDate, item.year, Lang.current) {
+        formatEpisodeDate(item.releaseDate, includeYear = true).ifBlank { item.year?.toString().orEmpty() }
+    }
     PosterCard(
         item = item,
         onClick = onClick,
@@ -156,7 +160,7 @@ fun CatalogPosterCard(
             )
             Spacer(Modifier.height(2.dp))
             Text(
-                text = item.year?.toString().orEmpty(),
+                text = releaseLabel,
                 color = Color.White.copy(alpha = 0.55f),
                 style = MaterialTheme.typography.bodySmall,
                 maxLines = 1,

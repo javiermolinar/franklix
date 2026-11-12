@@ -20,6 +20,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.shieldstream.tv.model.AudioCodec
 import com.shieldstream.tv.model.HdrType
 import com.shieldstream.tv.model.PlaybackVideoInfo
 import com.shieldstream.tv.model.Quality
@@ -35,6 +36,7 @@ fun SourceMediaBadges(source: StreamSource, modifier: Modifier = Modifier) {
             MediaBadge(hdrLabel(source.hdrType), hdrIcon(source.hdrType), hdrColor(source.hdrType))
         }
         source.videoCodec?.let { MediaBadge(it.label, AppIcons.Memory, BadgeColors.Codec) }
+        source.audioCodecs.forEach { MediaBadge(audioBadgeLabel(it), AppIcons.Volume, BadgeColors.Neutral) }
         if (source.softwareDecode) MediaBadge("CPU", AppIcons.Memory, BadgeColors.Software)
     }
 }
@@ -71,6 +73,14 @@ private fun MediaBadge(text: String, icon: ImageVector, accent: Color) {
             style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
         )
     }
+}
+
+private fun audioBadgeLabel(codec: AudioCodec): String = when (codec) {
+    AudioCodec.DOLBY_ATMOS -> "Atmos"
+    AudioCodec.DOLBY_TRUEHD -> "TrueHD"
+    AudioCodec.DOLBY_DIGITAL_PLUS -> "DD+"
+    AudioCodec.DOLBY_DIGITAL -> "DD"
+    else -> codec.label
 }
 
 private fun hdrLabel(type: HdrType): String = if (type == HdrType.DOLBY_VISION) "DV" else type.label

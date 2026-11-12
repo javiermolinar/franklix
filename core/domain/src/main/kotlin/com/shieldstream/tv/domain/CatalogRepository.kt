@@ -7,6 +7,7 @@ import com.shieldstream.tv.model.Category
 import com.shieldstream.tv.model.FeaturedItem
 import com.shieldstream.tv.model.Episode
 import com.shieldstream.tv.model.HomeFilter
+import com.shieldstream.tv.model.PersonDetails
 import com.shieldstream.tv.model.MediaType
 import com.shieldstream.tv.model.StreamSource
 import com.shieldstream.tv.model.ShowAiring
@@ -25,6 +26,8 @@ interface CatalogRepository {
     suspend fun getDetails(item: CatalogItem): CatalogDetails
 
     suspend fun getItem(type: MediaType, id: String): CatalogItem?
+
+    suspend fun getPerson(personId: Int): PersonDetails
 
     suspend fun getShowAiring(id: String): ShowAiring?
 

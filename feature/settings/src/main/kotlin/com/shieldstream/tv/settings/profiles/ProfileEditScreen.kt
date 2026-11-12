@@ -134,6 +134,13 @@ fun ProfileEditScreen(
                         onDisconnect = viewModel::disconnectTrakt,
                         onFocusLost = viewModel::cancelConfirmations,
                     )
+                    if (profile.traktUser != null) {
+                        Spacer(Modifier.height(12.dp))
+                        StremioImportCard(
+                            state = editing,
+                            onImport = viewModel::importStremioList,
+                        )
+                    }
                     Spacer(Modifier.height(12.dp))
                     Text(localizedStringResource(StringsR.string.settings_audio_for_this_profile), color = ProfileMuted, fontSize = 16.sp)
                     Spacer(Modifier.height(8.dp))
@@ -420,6 +427,60 @@ private fun TraktCard(
         Column {
             Text(title, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
             Text(subtitle, color = if (state.confirmDisconnect) AppColors.Warning else ProfileMuted, fontSize = 15.sp)
+        }
+    }
+}
+
+@Composable
+private fun StremioImportCard(
+    state: ProfileEditUiState.Editing,
+    onImport: () -> Unit,
+) {
+    var focused by remember { mutableStateOf(false) }
+    val title = if (state.importBusy) {
+        localizedStringResource(StringsR.string.settings_import_stremio_busy)
+    } else {
+        localizedStringResource(StringsR.string.settings_import_stremio_title)
+    }
+    val subtitle = when {
+        state.importFailed -> localizedStringResource(StringsR.string.settings_import_stremio_failed)
+        state.importResult == null -> localizedStringResource(StringsR.string.settings_import_stremio_explanation)
+        state.importResult.moviesAdded + state.importResult.showsAdded == 0 ->
+            localizedStringResource(StringsR.string.settings_import_stremio_up_to_date)
+        else -> localizedStringResource(
+            StringsR.string.settings_import_stremio_success,
+            state.importResult.moviesAdded,
+            state.importResult.showsAdded,
+        )
+    }
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(if (focused) AppColors.SurfaceFocused else AppColors.Surface, AppShapes.Control)
+            .border(
+                width = if (focused) 2.dp else 1.dp,
+                color = if (focused) Color.White else Color.White.copy(alpha = 0.08f),
+                shape = AppShapes.Control,
+            )
+            .onFocusChanged { focused = it.isFocused }
+            .tvClickable(enabled = !state.busy && !state.importBusy, onClick = onImport)
+            .padding(horizontal = 22.dp, vertical = 16.dp),
+    ) {
+        Box(
+            Modifier.size(44.dp).background(Color(0xFF635BFF), AppShapes.Pill),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text("S", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.SemiBold)
+        }
+        Spacer(Modifier.width(18.dp))
+        Column {
+            Text(title, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+            Text(
+                subtitle,
+                color = if (state.importFailed) AppColors.Warning else ProfileMuted,
+                fontSize = 15.sp,
+            )
         }
     }
 }
