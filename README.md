@@ -3,6 +3,8 @@
 
 Franklix is a fork of https://github.com/grodri99/bambi.
 
+** This app is under heavy development. It can breaks! **
+
 Credits
 
 Catalog and images: TMDB. This product uses the TMDB API but is not endorsed or certified by TMDB.
