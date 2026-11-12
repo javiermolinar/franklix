@@ -24,7 +24,7 @@ val ithilMetadataUrl: String = localProps.getProperty("ithilMetadataUrl")?.trim(
 val ithilIndexKey: String = localProps.getProperty("ithilIndexKey")?.trim() ?: ""
 val ithilArchivePrefix: String = localProps.getProperty("ithilArchivePrefix")?.trim() ?: ""
 
-android {
+configure<com.android.build.api.dsl.ApplicationExtension> {
     namespace = "com.shieldstream.tv"
     compileSdk = 37
 
@@ -55,9 +55,6 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
-    }
-    kotlinOptions {
-        jvmTarget = "17"
     }
 
     signingConfigs {
@@ -91,6 +88,12 @@ android {
             signingConfig = signingConfigs.getByName("debug")
             matchingFallbacks += "release"
         }
+    }
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
     }
 }
 

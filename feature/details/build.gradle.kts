@@ -6,7 +6,7 @@ plugins {
     alias(libs.plugins.hilt)
 }
 
-android {
+configure<com.android.build.api.dsl.LibraryExtension> {
     namespace = "com.shieldstream.tv.details"
     compileSdk = 35
 
@@ -22,12 +22,15 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    kotlinOptions {
-        jvmTarget = "17"
-    }
 
     testOptions {
         unitTests.isReturnDefaultValues = true
+    }
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
     }
 }
 
