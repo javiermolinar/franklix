@@ -105,12 +105,18 @@ class MyListViewModel @Inject constructor(
                 MyListFilter.MOVIES -> it.type == MediaType.MOVIE
             }
         }
-        val initial = loadItems(wanted.take(INITIAL_BATCH_SIZE), current)
-        emit(buildState(initial, current))
-        if (wanted.size > INITIAL_BATCH_SIZE) {
-            val remaining = loadItems(wanted.drop(INITIAL_BATCH_SIZE), current)
-            emit(buildState(initial + remaining, current))
+        // Under Recent, the newest entries are exactly the top of the final list, so they can appear
+        // first. Other sorts depend on data from every item; an early batch would reshuffle when the
+        // rest arrived, so they keep showing the previous list until the full one is ready.
+        if (current.sort != MyListSort.RECENT || wanted.size <= INITIAL_BATCH_SIZE) {
+            emit(buildState(loadItems(wanted, current), current))
+            return@flow
         }
+        val newestFirst = wanted.sortedByDescending { it.addedAt }
+        val initial = loadItems(newestFirst.take(INITIAL_BATCH_SIZE), current)
+        emit(buildState(initial, current))
+        val remaining = loadItems(newestFirst.drop(INITIAL_BATCH_SIZE), current)
+        emit(buildState(initial + remaining, current))
     }
 
     private suspend fun loadItems(

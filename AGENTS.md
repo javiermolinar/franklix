@@ -84,7 +84,9 @@ These are measured project-specific rules, not generic Compose advice. The refer
 - Use `mapConcurrent(concurrency = 4)` for batches of show/season requests. Do not launch 40–50 unrestricted TMDB calls.
 - `CatalogRepositoryImpl` caches airing and season data for six hours and uses per-key mutexes to deduplicate in-flight requests. Preserve both behaviors.
 - Do not eagerly load all episode statuses at app startup merely to populate a badge.
-- Full-season completion checks are expensive and should remain user-triggered and bounded.
+- Full-season completion checks are expensive and should remain user-triggered and bounded. `isComplete` first rules out shows whose latest aired episode is unwatched. For a 68-show My List, Hide completed went from 118 season requests (2.8 s) to none (75 ms).
+- `getItem` for a show goes through `getShowAiring`: both need the same TMDB details request. Fetched separately, Home and My List downloaded each show twice at startup (124 → 101 show requests for ~97 shows).
+- My List emits its first 20 items early only under the Recent sort, where they are exactly the top of the final list. Other sorts wait for the full list so it does not reshuffle. Home's My list row shows its first 12 items in ~1.3 s instead of waiting ~3.4 s for all 50.
 - Image loads and full-screen composition are different costs; avoid new image requests unless they solve a measured problem.
 
 ### Changes that did not help in testing

@@ -552,6 +552,36 @@ class HomeViewModelsTest {
     }
 
     @Test
+    fun `home my list row shows the first twelve items before the rest load`() = runTest {
+        val entries = (1..20).map { MyListEntry(MediaType.MOVIE, it.toString(), addedAt = (100 - it).toLong()) }
+        val allowRemaining = CompletableDeferred<Unit>()
+        val catalog = mockk<CatalogRepository>()
+        coEvery { catalog.getHome(any()) } returns listOf(CatalogRow("base", "Base", listOf(item("base", MediaType.MOVIE, "Base"))))
+        coEvery { catalog.getFeatured(any()) } returns emptyList()
+        coEvery { catalog.getItem(MediaType.MOVIE, any()) } coAnswers {
+            val id = secondArg<String>()
+            if (id.toIntOrNull()?.let { it > 12 } == true) allowRemaining.await()
+            item(id, MediaType.MOVIE, "Title $id")
+        }
+        val viewModel = homeViewModel(
+            catalog = catalog,
+            trakt = mockk(relaxed = true),
+            active = profileFlow(traktUser = null),
+            myList = mockk { every { this@mockk.entries } returns MutableStateFlow(entries) },
+        )
+
+        viewModel.load(HomeFilter.ALL)
+        // runCurrent, not advanceUntilIdle: advancing virtual time would expire the per-item timeout.
+        runCurrent()
+        fun myListRow() = (viewModel.uiState.value as HomeUiState.Content).rows.single { it.id == "my_list" }
+        assertEquals((1..12).map { it.toString() }, myListRow().items.map { it.id })
+
+        allowRemaining.complete(Unit)
+        runCurrent()
+        assertEquals((1..20).map { it.toString() }, myListRow().items.map { it.id })
+    }
+
+    @Test
     fun `up next focus key follows show identity after reordering`() {
         val first = item("first", MediaType.TV, "First")
         val second = item("second", MediaType.TV, "Second")
@@ -606,7 +636,8 @@ class HomeViewModelsTest {
 
     @Test
     fun `my list emits the first twenty items before loading the remainder`() = runTest {
-        val entries = (1..25).map { MyListEntry(MediaType.MOVIE, it.toString(), addedAt = it.toLong()) }
+        // Ids 1..20 are the newest entries.
+        val entries = (1..25).map { MyListEntry(MediaType.MOVIE, it.toString(), addedAt = (100 - it).toLong()) }
         val allowRemaining = CompletableDeferred<Unit>()
         val catalog = mockk<CatalogRepository>()
         coEvery { catalog.getItem(MediaType.MOVIE, any()) } coAnswers {
@@ -626,6 +657,36 @@ class HomeViewModelsTest {
         allowRemaining.complete(Unit)
         val final = viewModel.uiState.first { it is MyListUiState.Content && it.items.size == entries.size }
         assertEquals(25, (final as MyListUiState.Content).items.size)
+        assertEquals(first.items, final.items.take(20))
+    }
+
+    @Test
+    fun `my list sorts that need every item do not emit a partial list`() = runTest {
+        val entries = (1..25).map { MyListEntry(MediaType.MOVIE, it.toString(), addedAt = (100 - it).toLong()) }
+        val allowRemaining = CompletableDeferred<Unit>()
+        val catalog = mockk<CatalogRepository>()
+        coEvery { catalog.getItem(MediaType.MOVIE, any()) } coAnswers {
+            val id = secondArg<String>()
+            if (id.toInt() > 20) allowRemaining.await()
+            item(id, MediaType.MOVIE, "Title $id")
+        }
+        val viewModel = MyListViewModel(
+            catalogRepository = catalog,
+            myList = mockk { every { this@mockk.entries } returns MutableStateFlow(entries) },
+            watchProgress = mockk { every { progress } returns MutableStateFlow(emptyMap()) },
+            episodeReleases = mockk(relaxed = true),
+            tracking = tracking(),
+        )
+        viewModel.setSort(MyListSort.TITLE)
+        backgroundScope.launch { viewModel.uiState.collect {} }
+        // runCurrent, not advanceUntilIdle: advancing virtual time would expire the per-item timeout.
+        runCurrent()
+
+        // A partial A-Z list would reshuffle once the remaining items arrived.
+        assertTrue(viewModel.uiState.value is MyListUiState.Loading)
+        allowRemaining.complete(Unit)
+        runCurrent()
+        assertEquals(25, viewModel.content().items.size)
     }
 
     @Test
