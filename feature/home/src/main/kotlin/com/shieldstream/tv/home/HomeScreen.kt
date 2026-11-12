@@ -93,6 +93,7 @@ import com.shieldstream.tv.ui.component.onBackKey
 import com.shieldstream.tv.ui.component.RailCollapsedWidth
 import com.shieldstream.tv.ui.component.RailContentStart
 import com.shieldstream.tv.ui.component.SoftBackdropImage
+import com.shieldstream.tv.ui.component.BackdropScrim
 import com.shieldstream.tv.ui.component.rememberLoopingRowState
 import com.shieldstream.tv.ui.component.requestFocusWithRetry
 import com.shieldstream.tv.ui.component.shouldLoop
@@ -719,43 +720,33 @@ private fun CatalogRowView(
     }
 }
 
+// Keep the hero text and rows readable over the backdrop.
+private val HeroScrims = listOf(
+    BackdropScrim(horizontal = true, stops = listOf(0f to 1f, 0.28f to 1f, 0.52f to 0.72f, 0.72f to 0f)),
+    BackdropScrim(horizontal = false, stops = listOf(0.40f to 0f, 0.72f to 0.25f, 1f to 1f)),
+)
+private val HeroScrimBrushes = HeroScrims.map { it.brush() }
+
 @Composable
 private fun HeroBackdrop(item: CatalogItem) {
+    val url = item.backdropUrl ?: return
+    // Softened by default so the rows, not the artwork, carry the screen. The featured carousel
+    // stays sharp either way.
+    if (LocalSoftBackdrops.current) {
+        // The scrims are baked into the softened bitmap. As full-screen gradients they cost about
+        // 22 ms of GPU time per frame on the Nokia 8010, because every row scroll redraws the screen.
+        SoftBackdropImage(url = url, modifier = Modifier.fillMaxSize(), scrims = HeroScrims)
+        return
+    }
     Box(Modifier.fillMaxSize()) {
-        // Softened by default so the rows, not the artwork, carry the screen. The featured carousel
-        // stays sharp either way.
-        item.backdropUrl?.let { url ->
-            if (LocalSoftBackdrops.current) {
-                SoftBackdropImage(url = url, modifier = Modifier.fillMaxSize())
-            } else {
-                AsyncImage(
-                    // The soft path decodes at 320 px, so resolution only matters for sharp backdrops.
-                    model = BackdropUrls.fullScreen(url, lightweight = false, highRes = LocalHighResBackdrops.current),
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize(),
-                )
-            }
-        }
-        Box(
-            Modifier.fillMaxSize().background(
-                Brush.horizontalGradient(
-                    0f to AppColors.Background,
-                    0.28f to AppColors.Background,
-                    0.52f to AppColors.Background.copy(alpha = 0.72f),
-                    0.72f to Color.Transparent,
-                ),
-            ),
+        AsyncImage(
+            // The soft path decodes at 320 px, so resolution only matters for sharp backdrops.
+            model = BackdropUrls.fullScreen(url, lightweight = false, highRes = LocalHighResBackdrops.current),
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize(),
         )
-        Box(
-            Modifier.fillMaxSize().background(
-                Brush.verticalGradient(
-                    0.40f to Color.Transparent,
-                    0.72f to AppColors.Background.copy(alpha = 0.25f),
-                    1f to AppColors.Background,
-                ),
-            ),
-        )
+        HeroScrimBrushes.forEach { brush -> Box(Modifier.fillMaxSize().background(brush)) }
     }
 }
 

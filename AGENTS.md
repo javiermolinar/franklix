@@ -66,6 +66,7 @@ These are measured project-specific rules, not generic Compose advice. The refer
 - The featured carousel uses static artwork and immediate slide changes. Preserve this unless a physical-device A/B test proves an alternative is faster.
 - Lightweight mode skips changing row backdrops. Normal mode retains them. Do not request a new backdrop on every focus movement; the existing delayed hero update avoids that.
 - Avoid new full-screen shadows, blur, entrance animations, or simultaneous backdrop compositing without measurement.
+- Compose redraws the whole screen on every row scroll: Compose layers never clip HWUI damage. Every full-screen layer is paid on every frame. The Home backdrop plus two full-screen gradient scrims cost ~22 ms of GPU time per frame on the Nokia's Mali-G31. The soft path bakes the scrims into its opaque 320×180 bitmap (`SoftBackdropImage(scrims = …)`): GPU time dropped from 34 ms to 11 ms per frame, and median row-scroll frames from 46 ms to 19 ms. Do not reintroduce full-screen gradient overlays above a backdrop. Details still draws its backdrop this way.
 
 ### Recomposition and focus
 
@@ -92,6 +93,9 @@ Do not repeat these as presumed optimizations without new evidence:
 - Nested prefetch reduced from two cards to one: effectively unchanged. Keep two.
 - Removing poster scaling: no improvement and worse visual feedback.
 - A longer hero debounce: no improvement in the tested path.
+- Removing the redundant full-screen black fills (window, MainScreen, RowsBrowser): ≤0.5 ms GPU; the opaque backdrop already hides them.
+- An offscreen layer for the backdrop instead of baking the scrims: bimodal, with p90 GPU still 35 ms.
+- `nestedPrefetchItemCount` 7 instead of 2, or disabling overscroll: unchanged.
 
 Memory was not the observed bottleneck. Prioritize UI-thread work, draw submission, frame deadlines, and input latency.
 
@@ -111,6 +115,8 @@ Memory was not the observed bottleneck. Prioritize UI-thread work, draw submissi
 ```bash
 ANDROID_HOME="$HOME/Library/Android/sdk" bash ./gradlew test :app:assembleRelease
 ```
+
+`app/src/main/baseline-prof.txt` precompiles the UI libraries (Compose, Coil, coroutines, collection, navigation, lifecycle) as well as app code. Their bundled profiles miss the row-scroll paths. Without these rules, ~38% of main-thread time while scrolling on the Nokia was interpreted, and median main-thread time per row-scroll frame was 10.5 ms instead of 8 ms. Measure UI-thread changes after `cmd package compile -m speed-profile -f`. Measurements taken right after a reinstall without it are pessimistic.
 
 Unit tests exist mainly in `core:model`, `core:domain`, `core:data`, and `core:media`. Add focused tests there for pure rules, persistence mappings, date filtering, and source/playback policy. There is no comprehensive Compose/UI or end-to-end suite. Compilation and unit tests do not validate D-pad focus, direct playback, notification delivery, or setup layout; verify those on a device.
 
