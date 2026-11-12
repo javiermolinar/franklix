@@ -1,5 +1,28 @@
 # Changelog
 
+## [1.0.22] - 2026-11-12
+
+### Added
+
+- **Provider filters:** filter the source panel with All providers and individual provider chips. Provider names and audio-codec badges now appear on each source row.
+- **Cast and actor pages:** Details shows the cast; select an actor to see their biography and filmography, and hold OK on a title there to add it to or remove it from My List.
+- **Stremio My List import:** import missing movies and shows from the Trakt personal list in the profile editor. Existing entries stay unchanged.
+- **Next episode in the player:** the playback controls show the next episode; press Up to focus it.
+- **Release dates:** posters show the full release date instead of only the year.
+
+### Improved
+
+- **Smoother Home scrolling:** row navigation renders about twice as fast on low-power boxes such as the Nokia Streaming Box 8010.
+- **My List loading:** the first 20 items appear before the rest of the list finishes loading.
+
+- **Global source ranking:** sources from every provider share one ranked list. Language preferences and playback availability take priority, followed by decoding support, HDR, quality, seeders, and size.
+- **Availability tiers:** cached and direct sources stay preferred, while non-cached torrents with zero seeds drop below seeded sources and sources with unknown seeder counts.
+- **Source controls:** removed the redundant Spanish-only toggle; the profile preference still applies automatically.
+
+### Fixed
+
+- Keep focus on the first ranked source when opening the panel, changing providers, or receiving a new top-ranked result.
+
 ## [1.0.21] - 2026-11-11
 
 ### Added
