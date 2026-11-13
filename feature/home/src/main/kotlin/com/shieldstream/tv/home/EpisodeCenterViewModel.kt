@@ -6,8 +6,11 @@ import com.shieldstream.tv.domain.EpisodeReleaseRepository
 import com.shieldstream.tv.domain.EpisodeTrackingRepository
 import com.shieldstream.tv.domain.MyListRepository
 import com.shieldstream.tv.domain.NewEpisodes
+import com.shieldstream.tv.domain.TraktRepository
 import com.shieldstream.tv.domain.WatchProgressRepository
 import com.shieldstream.tv.domain.mapConcurrent
+import com.shieldstream.tv.model.CatalogItem
+import com.shieldstream.tv.model.Episode
 import com.shieldstream.tv.model.HomeFilter
 import com.shieldstream.tv.model.ShowEpisodeStatus
 import com.shieldstream.tv.model.WatchProgress
@@ -45,8 +48,9 @@ private data class EpisodeCenterQuery(
 class EpisodeCenterViewModel @Inject constructor(
     private val releases: EpisodeReleaseRepository,
     private val tracking: EpisodeTrackingRepository,
-    watchProgress: WatchProgressRepository,
-    myList: MyListRepository,
+    private val watchProgress: WatchProgressRepository,
+    private val myList: MyListRepository,
+    private val trakt: TraktRepository,
 ) : ViewModel() {
 
     private val active = MutableStateFlow(false)
@@ -82,6 +86,29 @@ class EpisodeCenterViewModel @Inject constructor(
 
     fun activate() {
         active.value = true
+    }
+
+    fun isInMyList(item: CatalogItem): Boolean = myList.contains(item.type, item.id)
+
+    fun toggleMyList(item: CatalogItem) {
+        if (isInMyList(item)) myList.remove(item.type, item.id) else myList.add(item.type, item.id)
+    }
+
+    fun isEpisodeWatched(item: CatalogItem, episode: Episode): Boolean =
+        watchProgress.get(WatchProgress.episodeKey(item.id, episode.season, episode.number))?.isWatched == true
+
+    fun toggleEpisodeWatched(item: CatalogItem, episode: Episode) {
+        val key = WatchProgress.episodeKey(item.id, episode.season, episode.number)
+        val watched = watchProgress.get(key)?.isWatched == true
+        trakt.setWatched(listOf(key), watched = !watched)
+        if (watched) {
+            watchProgress.removeRemote(listOf(key))
+        } else {
+            val duration = watchProgress.get(key)?.durationMs?.takeIf { it > 1 }
+                ?: episode.runtimeMinutes?.toLong()?.times(60_000L)
+                ?: 1L
+            watchProgress.save(key, duration, duration)
+        }
     }
 
     fun dismiss(status: ShowEpisodeStatus) {

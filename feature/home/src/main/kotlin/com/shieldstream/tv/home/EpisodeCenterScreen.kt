@@ -3,6 +3,7 @@ package com.shieldstream.tv.home
 import com.shieldstream.tv.strings.R as StringsR
 import com.shieldstream.tv.strings.localizedStringResource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
@@ -17,8 +18,13 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -26,9 +32,22 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.shieldstream.tv.model.CatalogItem
 import com.shieldstream.tv.model.Episode
+import com.shieldstream.tv.model.ShowEpisodeStatus
 import com.shieldstream.tv.strings.localizedCode
+import com.shieldstream.tv.ui.component.ActionMenuDialog
+import com.shieldstream.tv.ui.component.ActionMenuItem
+import com.shieldstream.tv.ui.component.AppIcons
+import com.shieldstream.tv.ui.component.LineIcons
 import com.shieldstream.tv.ui.component.NewEpisodeCard
 import com.shieldstream.tv.ui.component.formatEpisodeDate
+import com.shieldstream.tv.ui.component.requestFocusWithRetry
+
+private data class EpisodeMenu(
+    val status: ShowEpisodeStatus,
+    val episode: Episode,
+    val watched: Boolean,
+    val inMyList: Boolean,
+)
 
 @Composable
 fun EpisodeCenterScreen(
@@ -36,7 +55,32 @@ fun EpisodeCenterScreen(
     viewModel: EpisodeCenterViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val cardRequester = remember { FocusRequester() }
+    var lastCardKey by rememberSaveable { mutableStateOf<String?>(null) }
+    var cardToRestore by remember { mutableStateOf<String?>(null) }
+    var episodeMenu by remember { mutableStateOf<EpisodeMenu?>(null) }
     LaunchedEffect(Unit) { viewModel.activate() }
+    LaunchedEffect(cardToRestore) {
+        if (cardToRestore == null) return@LaunchedEffect
+        cardRequester.requestFocusWithRetry()
+        cardToRestore = null
+    }
+
+    fun closeMenu() {
+        cardToRestore = lastCardKey
+        episodeMenu = null
+    }
+
+    fun closeToNeighbour(status: ShowEpisodeStatus) {
+        val items = (state as? EpisodeCenterUiState.Content)?.available.orEmpty()
+        val index = items.indexOfFirst { it.item.key == status.item.key }
+        val neighbour = if (index < 0) null else items.getOrNull(index + 1) ?: items.getOrNull(index - 1)
+        lastCardKey = neighbour?.item?.key
+        cardToRestore = lastCardKey
+        episodeMenu = null
+    }
+
+    Box(Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize().padding(start = 48.dp, end = 36.dp, top = 24.dp)) {
         Text(
             text = localizedStringResource(StringsR.string.home_episodes),
@@ -73,14 +117,23 @@ fun EpisodeCenterScreen(
                                             label = label,
                                             count = status.availableEpisodes.size,
                                             onClick = { onOpenEpisode(status.item, episode) },
-                                            onLongClick = { viewModel.dismiss(status) },
+                                            onFocused = { lastCardKey = status.item.key },
+                                            onLongClick = {
+                                                episodeMenu = EpisodeMenu(
+                                                    status = status,
+                                                    episode = episode,
+                                                    watched = viewModel.isEpisodeWatched(status.item, episode),
+                                                    inMyList = viewModel.isInMyList(status.item),
+                                                )
+                                            },
+                                            modifier = if (status.item.key == lastCardKey) Modifier.focusRequester(cardRequester) else Modifier,
                                         )
                                     }
                                 }
                             }
                             item(key = "dismiss_hint") {
                                 Text(
-                                    text = localizedStringResource(StringsR.string.home_hold_ok_to_dismiss),
+                                    text = localizedStringResource(StringsR.string.details_hold_ok_for_episode_options),
                                     color = Color.White.copy(alpha = 0.45f),
                                     style = MaterialTheme.typography.bodySmall,
                                 )
@@ -114,6 +167,46 @@ fun EpisodeCenterScreen(
                 }
             }
         }
+    }
+
+    episodeMenu?.let { menu ->
+        ActionMenuDialog(
+            title = "${menu.status.item.title} · ${menu.episode.localizedCode()}",
+            onDismiss = { closeMenu() },
+            consumeOpeningKeyRelease = true,
+            actions = listOf(
+                ActionMenuItem(localizedStringResource(StringsR.string.home_cancel), LineIcons.Close) { closeMenu() },
+                ActionMenuItem(
+                    text = localizedStringResource(
+                        if (menu.watched) StringsR.string.details_episode_mark_unwatched else StringsR.string.details_episode_mark_watched,
+                    ),
+                    icon = if (menu.watched) AppIcons.Check else LineIcons.Eye,
+                    onClick = {
+                        if (menu.watched || menu.status.availableEpisodes.size > 1) closeMenu() else closeToNeighbour(menu.status)
+                        viewModel.toggleEpisodeWatched(menu.status.item, menu.episode)
+                    },
+                ),
+                ActionMenuItem(
+                    text = localizedStringResource(
+                        if (menu.inMyList) StringsR.string.details_remove_from_my_list else StringsR.string.details_add_to_my_list,
+                    ),
+                    icon = if (menu.inMyList) LineIcons.Delete else AppIcons.Add,
+                    onClick = {
+                        closeMenu()
+                        viewModel.toggleMyList(menu.status.item)
+                    },
+                ),
+                ActionMenuItem(
+                    text = localizedStringResource(StringsR.string.home_dismiss),
+                    icon = LineIcons.Close,
+                    onClick = {
+                        closeToNeighbour(menu.status)
+                        viewModel.dismiss(menu.status)
+                    },
+                ),
+            ),
+        )
+    }
     }
 }
 

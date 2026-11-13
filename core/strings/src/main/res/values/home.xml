@@ -30,6 +30,7 @@
     <string name="home_next_30_days">Next 30 days</string>
     <string name="home_view_details">View details</string>
     <string name="home_remove">Remove</string>
+    <string name="home_dismiss">Dismiss</string>
     <string name="home_cancel">Cancel</string>
     <string name="home_exit_title">Exit Franklix?</string>
     <string name="home_exit_confirm">Exit</string>
