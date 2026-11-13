@@ -74,6 +74,16 @@ interface CalendarRepository {
 object CalendarRules {
     const val MAX_DOTS = 3
 
+    /**
+     * Bayesian rating for release ranking and filtering. One hundred prior votes at 7.0 keep a
+     * small, self-selected group of early ratings from dominating established releases.
+     */
+    fun adjustedReleaseRating(voteAverage: Double, voteCount: Int): Double {
+        if (voteAverage <= 0.0 || voteCount <= 0) return 0.0
+        return (voteCount * voteAverage + RELEASE_RATING_PRIOR_VOTES * RELEASE_RATING_BASELINE) /
+            (voteCount + RELEASE_RATING_PRIOR_VOTES)
+    }
+
     /** Days of adjacent months included around a month so its grid edges have data. */
     private const val GRID_MARGIN_DAYS = 7L
 
@@ -186,6 +196,8 @@ object CalendarRules {
     }
 
     private const val MAX_SEASONS = 3
+    private const val RELEASE_RATING_BASELINE = 7.0
+    private const val RELEASE_RATING_PRIOR_VOTES = 100
 
     private val EPISODE_ORDER = compareBy<CalendarEpisode, String>(String.CASE_INSENSITIVE_ORDER) { it.show.title }
         .thenBy { it.show.id }

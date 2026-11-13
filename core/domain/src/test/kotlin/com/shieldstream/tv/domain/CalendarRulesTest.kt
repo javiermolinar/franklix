@@ -27,6 +27,14 @@ class CalendarRulesTest {
         CalendarRelease(item(title, title, if (series) MediaType.TV else MediaType.MOVIE), today, rating, series)
 
     @Test
+    fun `release rating shrinks small vote samples toward the baseline`() {
+        assertEquals(7.6714, CalendarRules.adjustedReleaseRating(9.1, 47), 0.0001)
+        assertEquals(8.125, CalendarRules.adjustedReleaseRating(8.5, 300), 0.0001)
+        assertEquals(6.8333, CalendarRules.adjustedReleaseRating(6.0, 20), 0.0001)
+        assertEquals(0.0, CalendarRules.adjustedReleaseRating(0.0, 0), 0.0)
+    }
+
+    @Test
     fun `episodes sort by show title and releases by rating then title`() {
         val day = CalendarRules.day(
             today, today,

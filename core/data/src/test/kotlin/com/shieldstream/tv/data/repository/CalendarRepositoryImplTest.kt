@@ -76,28 +76,34 @@ class CalendarRepositoryImplTest {
     }
 
     @Test
-    fun `releases combine movies and series, round ratings and are cached`() = runTest {
+    fun `releases combine movies and series, adjust ratings and are cached`() = runTest {
         coEvery { tmdb.discoverMovieQuery("key", any()) } returns TmdbPaginated(
-            results = listOf(TmdbMovieDto(id = 10, title = "Film", release_date = "2026-11-03", vote_average = 7.95)),
+            results = listOf(TmdbMovieDto(id = 10, title = "Film", release_date = "2026-11-03", vote_average = 7.95, vote_count = 100)),
         )
         coEvery { tmdb.discoverTvQuery("key", any()) } returns TmdbPaginated(
             results = listOf(
-                TmdbTvDto(id = 20, name = "Series", first_air_date = "2026-11-04", vote_average = 8.44),
-                TmdbTvDto(id = 21, name = "Undated", first_air_date = null, vote_average = 9.0),
+                TmdbTvDto(id = 20, name = "Series", first_air_date = "2026-11-04", vote_average = 8.44, vote_count = 100),
+                TmdbTvDto(id = 21, name = "Undated", first_air_date = null, vote_average = 9.0, vote_count = 100),
             ),
         )
 
         val first = repository.releases(start, end)
         val second = repository.releases(start, end)
 
-        assertEquals(listOf("Film" to 8.0f, "Series" to 8.4f), first.map { it.item.title to it.rating })
+        assertEquals(listOf("Film" to 7.5f, "Series" to 7.7f), first.map { it.item.title to it.rating })
+        assertEquals(listOf(7.95f, 8.44f), first.map { it.item.rating })
         assertEquals(listOf(false, true), first.map { it.isNewSeries })
         assertEquals(first, second)
         coVerify(exactly = 1) { tmdb.discoverMovieQuery("key", any()) }
         coVerify(exactly = 1) {
             tmdb.discoverTvQuery(
                 "key",
-                match { it["first_air_date.gte"] == "2026-10-01" && it["first_air_date.lte"] == "2026-11-30" && it["page"] == "1" },
+                match {
+                    it["first_air_date.gte"] == "2026-10-01" &&
+                        it["first_air_date.lte"] == "2026-11-30" &&
+                        it["sort_by"] == "vote_count.desc" &&
+                        it["page"] == "1"
+                },
             )
         }
     }

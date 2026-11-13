@@ -152,7 +152,7 @@ class CalendarRepositoryImpl @Inject constructor(
             put("primary_release_date.gte", start.iso())
             put("primary_release_date.lte", end.iso())
             put("vote_count.gte", MIN_MOVIE_VOTES.toString())
-            put("sort_by", "vote_average.desc")
+            put("sort_by", "vote_count.desc")
             put("include_adult", "false")
             if (kids) {
                 put("with_genres", "16|10751")
@@ -163,7 +163,12 @@ class CalendarRepositoryImpl @Inject constructor(
         return pages { page -> tmdb.discoverMovieQuery(key, params + ("page" to page.toString())) }
             .map { dto ->
                 val date = CalendarDate.parse(dto.release_date) ?: return@map null
-                CalendarRelease(dto.toCatalogItem(), date, roundRating(dto.vote_average), isNewSeries = false)
+                CalendarRelease(
+                    dto.toCatalogItem(),
+                    date,
+                    roundRating(CalendarRules.adjustedReleaseRating(dto.vote_average, dto.vote_count)),
+                    isNewSeries = false,
+                )
             }
     }
 
@@ -174,20 +179,26 @@ class CalendarRepositoryImpl @Inject constructor(
             put("first_air_date.gte", start.iso())
             put("first_air_date.lte", end.iso())
             put("vote_count.gte", MIN_SERIES_VOTES.toString())
-            put("sort_by", "vote_average.desc")
+            put("sort_by", "vote_count.desc")
             put("include_adult", "false")
             if (kids) put("with_genres", "10762")
         }
         return pages { page -> tmdb.discoverTvQuery(key, params + ("page" to page.toString())) }
             .map { dto ->
                 val date = CalendarDate.parse(dto.first_air_date) ?: return@map null
-                CalendarRelease(dto.toCatalogItem(), date, roundRating(dto.vote_average), isNewSeries = true)
+                CalendarRelease(
+                    dto.toCatalogItem(),
+                    date,
+                    roundRating(CalendarRules.adjustedReleaseRating(dto.vote_average, dto.vote_count)),
+                    isNewSeries = true,
+                )
             }
     }
 
     /**
-     * First page, then the remaining pages concurrently. Sorted by rating, so a page cap drops the
-     * lowest rated. Failures are reported in [Loaded.complete]; cancellation propagates.
+     * First page, then the remaining pages concurrently. Sorted by vote count, so a page cap drops
+     * releases with the least rating evidence; [CalendarRules] applies the final adjusted-rating
+     * order. Failures are reported in [Loaded.complete]; cancellation propagates.
      */
     private suspend fun <T> pages(load: suspend (Int) -> TmdbPaginated<T>): Loaded<T> {
         val first = attempt { permits.withPermit { load(1) } } ?: return Loaded(emptyList(), complete = false)
@@ -218,8 +229,8 @@ class CalendarRepositoryImpl @Inject constructor(
         const val RELEASE_CACHE_MS = 6 * 60 * 60 * 1000L
         const val MAX_PAGES = 5
 
-        // TMDB averages from a handful of votes are noise (a 10.0 from two votes). These floors
-        // keep "best" meaningful, at the cost of very recent releases that have few votes yet.
+        // Exclude releases with almost no rating evidence. The adjusted rating handles the
+        // remaining small samples, at the cost of very recent releases that have few votes yet.
         const val MIN_MOVIE_VOTES = 50
         const val MIN_SERIES_VOTES = 20
     }

@@ -150,7 +150,10 @@ data class CalendarEpisode(
     val key: String get() = WatchProgress.episodeKey(show.id, episode.season, episode.number)
 }
 
-/** A movie or new series released on [date]. [rating] is TMDB's average rounded to one decimal. */
+/**
+ * A movie or new series released on [date]. [rating] is the vote-count-adjusted TMDB score rounded
+ * to one decimal; [item]'s rating remains TMDB's raw average.
+ */
 data class CalendarRelease(
     val item: CatalogItem,
     val date: CalendarDate,
