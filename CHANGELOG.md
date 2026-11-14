@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.0.23] - 2026-11-14
+
+### Added
+
+- **More like this:** Details shows a rail of similar titles below the cast. It loads when you scroll to it, and Back returns focus to the title you opened.
+- **Episode center actions:** hold OK on an episode in the episode center to mark it watched or unwatched, add the show to or remove it from My List, or dismiss it.
+
+### Improved
+
+- **Smoother Details scrolling:** moving up and down on Details renders more than twice as fast on low-power boxes such as the Nokia Streaming Box 8010 (median frame 48 → 20 ms).
+- **Calendar ratings:** release ratings account for vote count, so titles with a handful of early votes no longer outrank established releases in rating filters.
+- **Next episode:** the next-episode prompt during the credits always appears, and OK plays it. The episode starts automatically only when autoplay is enabled. The separate next-episode control in the playback controls was removed.
+
 ## [1.0.22] - 2026-11-12
 
 ### Added
