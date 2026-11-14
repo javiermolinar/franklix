@@ -186,17 +186,20 @@ class SettingsRepositoryImpl @Inject constructor(
             audioCodecs = prefs.getStringSet(KEY_EXCLUDED_AUDIO_CODECS, null).orEmpty().mapNotNull { name ->
                 AudioCodec.entries.firstOrNull { it.name == name }
             }.toSet(),
+            maxSizeBytes = prefs.getLong(KEY_MAX_SOURCE_SIZE_BYTES, 0L).takeIf { it > 0L },
         ),
     )
     override val sourceExclusions: Flow<SourceExclusions> = sourceExclusionsFlow
 
     override suspend fun setSourceExclusions(exclusions: SourceExclusions) {
+        val normalized = exclusions.copy(maxSizeBytes = exclusions.maxSizeBytes?.takeIf { it > 0L })
         prefs.edit()
-            .putStringSet(KEY_EXCLUDED_QUALITIES, exclusions.qualities.map { it.name }.toSet())
-            .putStringSet(KEY_EXCLUDED_HDR_TYPES, exclusions.hdrTypes.map { it.name }.toSet())
-            .putStringSet(KEY_EXCLUDED_AUDIO_CODECS, exclusions.audioCodecs.map { it.name }.toSet())
+            .putStringSet(KEY_EXCLUDED_QUALITIES, normalized.qualities.map { it.name }.toSet())
+            .putStringSet(KEY_EXCLUDED_HDR_TYPES, normalized.hdrTypes.map { it.name }.toSet())
+            .putStringSet(KEY_EXCLUDED_AUDIO_CODECS, normalized.audioCodecs.map { it.name }.toSet())
+            .putLong(KEY_MAX_SOURCE_SIZE_BYTES, normalized.maxSizeBytes ?: 0L)
             .apply()
-        sourceExclusionsFlow.value = exclusions
+        sourceExclusionsFlow.value = normalized
     }
 
     override suspend fun setDebridService(service: DebridService) {
@@ -257,6 +260,7 @@ class SettingsRepositoryImpl @Inject constructor(
         const val KEY_EXCLUDED_QUALITIES = "source_excluded_qualities"
         const val KEY_EXCLUDED_HDR_TYPES = "source_excluded_hdr_types"
         const val KEY_EXCLUDED_AUDIO_CODECS = "source_excluded_audio_codecs"
+        const val KEY_MAX_SOURCE_SIZE_BYTES = "source_max_size_bytes"
         const val MIN_BUFFER = 20
         const val MAX_BUFFER = 100
     }

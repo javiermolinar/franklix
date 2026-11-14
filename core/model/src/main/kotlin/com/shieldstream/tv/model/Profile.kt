@@ -7,6 +7,8 @@ data class Profile(
     val traktUser: String? = null,
     val pinHash: String? = null,
     val kids: Boolean = false,
+    /** Overrides the app-wide interface and catalog language; null follows the app setting. */
+    val languageOverride: AppLanguage? = null,
     val spanishFirst: Boolean = kids || !Lang.isEnglish,
     val spanishOnlySources: Boolean = kids,
     val hiddenCategories: Set<String> = Category.DEFAULT_HIDDEN,
@@ -18,6 +20,8 @@ data class Profile(
     val initial: String get() = name.trim().firstOrNull()?.uppercase() ?: "?"
 
     val locked: Boolean get() = pinHash != null
+
+    fun effectiveLanguage(appDefault: AppLanguage): AppLanguage = languageOverride ?: appDefault
 
     companion object {
         const val MAX = 5

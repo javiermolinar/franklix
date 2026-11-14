@@ -9,6 +9,7 @@ import com.shieldstream.tv.data.security.TokenStore
 import androidx.work.Configuration
 import androidx.hilt.work.HiltWorkerFactory
 import com.shieldstream.tv.domain.EpisodeTrackingRepository
+import com.shieldstream.tv.domain.ProfileRepository
 import com.shieldstream.tv.watchnext.WatchNextManager
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
@@ -35,14 +36,19 @@ class App : Application(), ImageLoaderFactory, Configuration.Provider {
     @Inject
     lateinit var watchNext: WatchNextManager
 
+    @Inject
+    lateinit var profiles: ProfileRepository
+
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder().setWorkerFactory(workerFactory).build()
 
     override fun onCreate() {
-        Lang.current = AppLanguage.fromName(
+        val appLanguage = AppLanguage.fromName(
             getSharedPreferences(AppLanguage.PREFS, MODE_PRIVATE).getString(AppLanguage.PREF_KEY, null),
         ) ?: AppLanguage.default()
+        Lang.current = appLanguage
         super.onCreate()
+        Lang.current = profiles.active.value.effectiveLanguage(appLanguage)
         tokenStore.seedOnce(TokenStore.RD_TOKEN, BuildConfig.RD_TOKEN)
         tokenStore.seedOnce(TokenStore.TMDB_KEY, BuildConfig.TMDB_API_KEY)
         tokenStore.seedOnce(TokenStore.SUBDL_KEY, BuildConfig.SUBDL_API_KEY)

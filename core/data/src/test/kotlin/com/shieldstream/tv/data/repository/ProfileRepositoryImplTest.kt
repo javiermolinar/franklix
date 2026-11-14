@@ -2,6 +2,8 @@ package com.shieldstream.tv.data.repository
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
+import com.shieldstream.tv.model.AppLanguage
+import com.shieldstream.tv.model.Lang
 import com.shieldstream.tv.model.Profile
 import com.shieldstream.tv.model.SubtitleAppearance
 import com.shieldstream.tv.model.SubtitleColor
@@ -11,6 +13,7 @@ import io.mockk.verify
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.After
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -22,11 +25,41 @@ import org.robolectric.annotation.Config
 class ProfileRepositoryImplTest {
 
     private lateinit var context: Context
+    private lateinit var previousLanguage: AppLanguage
 
     @Before
     fun clearProfiles() {
         context = ApplicationProvider.getApplicationContext()
+        previousLanguage = Lang.current
         context.getSharedPreferences("profiles", Context.MODE_PRIVATE).edit().clear().commit()
+        context.getSharedPreferences(AppLanguage.PREFS, Context.MODE_PRIVATE).edit().clear().commit()
+    }
+
+    @After
+    fun restoreLanguage() {
+        Lang.current = previousLanguage
+    }
+
+    @Test
+    fun `language override persists and selection applies the effective language`() {
+        context.getSharedPreferences(AppLanguage.PREFS, Context.MODE_PRIVATE).edit()
+            .putString(AppLanguage.PREF_KEY, AppLanguage.EN.name).commit()
+        val cleanup = mockk<ProfileDataCleaner>(relaxed = true)
+        val repository = ProfileRepositoryImpl(context, cleanup, mockk<Texts>(relaxed = true))
+        val kids = Profile(id = "kids", name = "Kids", avatar = 1, kids = true, languageOverride = AppLanguage.ES)
+        repository.save(kids)
+
+        repository.select(kids.id)
+        assertEquals(AppLanguage.ES, Lang.current)
+
+        val reloaded = ProfileRepositoryImpl(context, cleanup, mockk<Texts>(relaxed = true))
+        assertEquals(AppLanguage.ES, reloaded.active.value.languageOverride)
+
+        reloaded.select(Profile.DEFAULT_ID)
+        assertEquals(AppLanguage.EN, Lang.current)
+
+        reloaded.save(reloaded.active.value.copy(languageOverride = AppLanguage.ES))
+        assertEquals(AppLanguage.ES, Lang.current)
     }
 
     @Test

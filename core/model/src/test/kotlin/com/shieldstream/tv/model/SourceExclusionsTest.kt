@@ -50,6 +50,29 @@ class SourceExclusionsTest {
         assertEquals(listOf(aac), exclusions.filter(listOf(atmosTrueHd, dtsX, aac)))
     }
 
+    @Test
+    fun `size options increase in steps and end without a limit`() {
+        assertEquals(
+            listOf(1, 2, 4, 8, 20).map(SourceSizeLimits::gigabytes) + null,
+            SourceSizeLimits.OPTIONS,
+        )
+    }
+
+    @Test
+    fun `size limit excludes only known sizes above the limit`() {
+        val limit = SourceSizeLimits.gigabytes(1)
+        val exclusions = SourceExclusions(maxSizeBytes = limit)
+        val exact = source(Quality.FHD_1080, HdrType.SDR).copy(id = "exact", sizeBytes = limit)
+        val oversized = source(Quality.FHD_1080, HdrType.SDR).copy(id = "oversized", sizeBytes = limit + 1)
+        val unknown = source(Quality.FHD_1080, HdrType.SDR).copy(id = "unknown", sizeBytes = 0)
+
+        assertFalse(exclusions.isEmpty)
+        assertFalse(exclusions.excludes(exact))
+        assertTrue(exclusions.excludes(oversized))
+        assertFalse(exclusions.excludes(unknown))
+        assertEquals(listOf(exact, unknown), exclusions.filter(listOf(exact, oversized, unknown)))
+    }
+
     private fun source(quality: Quality, hdrType: HdrType) = StreamSource(
         id = "$quality-$hdrType",
         title = "Source",

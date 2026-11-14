@@ -31,6 +31,7 @@ class ProfileRepositoryImpl @Inject constructor(
 ) : ProfileRepository {
 
     private val prefs = context.getSharedPreferences("profiles", Context.MODE_PRIVATE)
+    private val appPrefs = context.getSharedPreferences(AppLanguage.PREFS, Context.MODE_PRIVATE)
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
 
     private val _profiles = MutableStateFlow(load())
@@ -45,6 +46,7 @@ class ProfileRepositoryImpl @Inject constructor(
         val profile = _profiles.value.firstOrNull { it.id == id } ?: return
         prefs.edit().putString(KEY_ACTIVE, id).apply()
         _active.value = profile
+        applyLanguage(profile)
     }
 
     override fun save(profile: Profile): Profile {
@@ -60,7 +62,10 @@ class ProfileRepositoryImpl @Inject constructor(
             list + clean
         }
         store(updated)
-        if (_active.value.id == clean.id) _active.value = clean
+        if (_active.value.id == clean.id) {
+            _active.value = clean
+            applyLanguage(clean)
+        }
         return clean
     }
 
@@ -84,11 +89,15 @@ class ProfileRepositoryImpl @Inject constructor(
         _profiles.value = list
     }
 
+    private fun applyLanguage(profile: Profile) {
+        val appDefault = AppLanguage.fromName(appPrefs.getString(AppLanguage.PREF_KEY, null)) ?: AppLanguage.default()
+        Lang.current = profile.effectiveLanguage(appDefault)
+    }
+
     private fun load(): List<Profile> {
-        val legacy = context.getSharedPreferences(AppLanguage.PREFS, Context.MODE_PRIVATE)
-        val spanishFirst = legacy.getBoolean("spanish_first", !Lang.isEnglish)
-        val spanishOnly = legacy.getBoolean("spanish_only_sources", false)
-        val hiddenCategories = legacy.getStringSet("hidden_categories", emptySet()).orEmpty().toSet()
+        val spanishFirst = appPrefs.getBoolean("spanish_first", !Lang.isEnglish)
+        val spanishOnly = appPrefs.getBoolean("spanish_only_sources", false)
+        val hiddenCategories = appPrefs.getStringSet("hidden_categories", emptySet()).orEmpty().toSet()
             .ifEmpty { Category.DEFAULT_HIDDEN }
         val stored = prefs.getString(KEY_LIST, null)?.let { raw ->
             runCatching { json.decodeFromString<List<StoredProfile>>(raw) }.getOrNull()
@@ -114,6 +123,7 @@ class ProfileRepositoryImpl @Inject constructor(
         val traktUser: String? = null,
         val pinHash: String? = null,
         val kids: Boolean = false,
+        val languageOverride: AppLanguage? = null,
         val spanishFirst: Boolean? = null,
         val spanishOnlySources: Boolean? = null,
         val hiddenCategories: Set<String>? = null,
@@ -129,6 +139,7 @@ class ProfileRepositoryImpl @Inject constructor(
     ) {
         fun toProfile(legacyFirst: Boolean, legacyOnly: Boolean, legacyHidden: Set<String>) = Profile(
             id, name, avatar, traktUser, pinHash, kids,
+            languageOverride = languageOverride,
             spanishFirst = spanishFirst ?: (kids || legacyFirst),
             spanishOnlySources = spanishOnlySources ?: (kids || legacyOnly),
             hiddenCategories = hiddenCategories ?: legacyHidden,
@@ -153,6 +164,7 @@ class ProfileRepositoryImpl @Inject constructor(
                 traktUser = p.traktUser,
                 pinHash = p.pinHash,
                 kids = p.kids,
+                languageOverride = p.languageOverride,
                 spanishFirst = p.spanishFirst,
                 spanishOnlySources = p.spanishOnlySources,
                 hiddenCategories = p.hiddenCategories,

@@ -98,6 +98,7 @@ fun NavRail(
     profileAvatar: Int = 0,
     onProfile: () -> Unit = {},
     newEpisodeCount: Int = 0,
+    tabs: List<NavTab> = NavTab.entries,
     onFocusChange: (Boolean) -> Unit = {},
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -143,7 +144,7 @@ fun NavRail(
                 }
             }
             Spacer(Modifier.weight(1f))
-            NavTab.entries.forEach { tab ->
+            tabs.forEach { tab ->
                 val label = localizedStringResource(tab.labelResource)
                 RailItem(
                     label = label,

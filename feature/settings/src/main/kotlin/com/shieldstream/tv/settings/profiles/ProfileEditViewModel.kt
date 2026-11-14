@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.shieldstream.tv.domain.ProfileRepository
 import com.shieldstream.tv.domain.TraktListImport
 import com.shieldstream.tv.domain.TraktRepository
+import com.shieldstream.tv.model.AppLanguage
 import com.shieldstream.tv.model.Category
 import com.shieldstream.tv.model.Profile
 import com.shieldstream.tv.model.ProfilePin
@@ -85,6 +86,10 @@ class ProfileEditViewModel @Inject constructor(
             ),
             confirmDelete = false,
         )
+    }
+
+    fun setLanguageOverride(language: AppLanguage?) = edit {
+        it.copy(profile = it.profile.copy(languageOverride = language), confirmDelete = false)
     }
 
     fun setSpanishFirst(enabled: Boolean) = edit { it.copy(profile = it.profile.copy(spanishFirst = enabled)) }

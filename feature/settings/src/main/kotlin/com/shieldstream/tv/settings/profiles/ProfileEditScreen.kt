@@ -43,6 +43,7 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.TextStyle
@@ -55,12 +56,15 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import kotlinx.coroutines.delay
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.shieldstream.tv.model.AppLanguage
 import com.shieldstream.tv.model.Category
+import com.shieldstream.tv.model.Lang
 import com.shieldstream.tv.model.ProfileAvatars
 import com.shieldstream.tv.model.SubtitlePreference
 import com.shieldstream.tv.settings.HomeCategoriesDialog
 import com.shieldstream.tv.ui.component.ProfileAvatar
 import com.shieldstream.tv.ui.component.TvButton
+import com.shieldstream.tv.ui.component.restartApp
 import com.shieldstream.tv.ui.component.tvClickable
 
 @Composable
@@ -70,6 +74,7 @@ fun ProfileEditScreen(
     viewModel: ProfileEditViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
     val editing = state as? ProfileEditUiState.Editing
     if (editing == null) {
         LaunchedEffect(Unit) { onDone() }
@@ -140,6 +145,23 @@ fun ProfileEditScreen(
                             state = editing,
                             onImport = viewModel::importStremioList,
                         )
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    Text(localizedStringResource(StringsR.string.settings_language_for_this_profile), color = ProfileMuted, fontSize = 16.sp)
+                    Spacer(Modifier.height(8.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        OptionChip(
+                            text = localizedStringResource(StringsR.string.settings_app_default),
+                            highlighted = profile.languageOverride == null,
+                            onClick = { viewModel.setLanguageOverride(null) },
+                        )
+                        AppLanguage.entries.forEach { language ->
+                            OptionChip(
+                                text = language.label,
+                                highlighted = profile.languageOverride == language,
+                                onClick = { viewModel.setLanguageOverride(language) },
+                            )
+                        }
                     }
                     Spacer(Modifier.height(12.dp))
                     Text(localizedStringResource(StringsR.string.settings_audio_for_this_profile), color = ProfileMuted, fontSize = 16.sp)
@@ -226,8 +248,9 @@ fun ProfileEditScreen(
                 TvButton(
                     text = localizedStringResource(StringsR.string.settings_save),
                     onClick = {
+                        val previousLanguage = Lang.current
                         viewModel.save()
-                        onDone()
+                        if (Lang.current != previousLanguage) restartApp(context) else onDone()
                     },
                     modifier = Modifier.focusRequester(saveRequester),
                 )

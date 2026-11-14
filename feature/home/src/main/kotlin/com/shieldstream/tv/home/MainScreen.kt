@@ -44,9 +44,15 @@ fun MainScreen(
     onOpenSettings: () -> Unit,
     profileInitial: String? = null,
     profileAvatar: Int = 0,
+    kidsProfile: Boolean = false,
     onSwitchProfile: () -> Unit = {},
 ) {
-    var tab by rememberSaveable { mutableStateOf(NavTab.HOME) }
+    var savedTab by rememberSaveable { mutableStateOf(NavTab.HOME) }
+    val tabs = availableNavTabs(kidsProfile)
+    val tab = visibleNavTab(savedTab, kidsProfile)
+    LaunchedEffect(savedTab, kidsProfile) {
+        if (savedTab != tab) savedTab = tab
+    }
     var category by rememberSaveable { mutableStateOf<Category?>(null) }
     var focusMenuAfterSwitch by remember { mutableStateOf(false) }
     var railFocused by remember { mutableStateOf(false) }
@@ -132,8 +138,8 @@ fun MainScreen(
             if (showRail) NavRail(
                 selected = tab,
                 onSelect = { selected ->
-                    if (selected != tab) {
-                        tab = selected
+                    if (selected in tabs && selected != tab) {
+                        savedTab = selected
                         focusMenuAfterSwitch = selected != NavTab.SEARCH && selected != NavTab.MY_LIST &&
                             selected != NavTab.EPISODES && selected != NavTab.CALENDAR
                     }
@@ -143,6 +149,7 @@ fun MainScreen(
                 contentRequester = contentRequester,
                 focusable = railFocusable,
                 newEpisodeCount = (episodeState as? EpisodeCenterUiState.Content)?.newEpisodeCount ?: 0,
+                tabs = tabs,
                 profileInitial = profileInitial,
                 profileAvatar = profileAvatar,
                 onProfile = onSwitchProfile,
@@ -166,5 +173,11 @@ fun MainScreen(
 
 // Search, My List and Episodes already apply a ~48 dp start padding of their own.
 private val TabContentInset = RailContentStart - 48.dp
+
+internal fun availableNavTabs(kidsProfile: Boolean): List<NavTab> =
+    if (kidsProfile) NavTab.entries.filterNot { it == NavTab.CALENDAR } else NavTab.entries
+
+internal fun visibleNavTab(requested: NavTab, kidsProfile: Boolean): NavTab =
+    requested.takeIf { it in availableNavTabs(kidsProfile) } ?: NavTab.HOME
 
 internal fun shouldRequestExit(categoryOpen: Boolean, railFocused: Boolean): Boolean = !categoryOpen && railFocused

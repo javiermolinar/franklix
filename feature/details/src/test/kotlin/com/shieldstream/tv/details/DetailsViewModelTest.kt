@@ -272,7 +272,7 @@ class DetailsViewModelTest {
     }
 
     @Test
-    fun `automatic playback excludes configured video and audio sources but manual selection can show all`() = runTest {
+    fun `automatic playback excludes configured video audio and size but manual selection can show all`() = runTest {
         val item = CatalogItem(
             id = "42",
             imdbId = "tt42",
@@ -293,10 +293,11 @@ class DetailsViewModelTest {
             infoHash = "truehd",
             audioCodecs = setOf(AudioCodec.DOLBY_TRUEHD),
         )
+        val oversized = source(episode).copy(id = "oversized", infoHash = "oversized", sizeBytes = 1_001)
         val catalog = mockk<CatalogRepository>()
         coEvery { catalog.getDetails(item) } returns CatalogDetails(item = item)
         every { catalog.getStreams(item, null) } returns flowOf(
-            StreamResults(sources = listOf(allowed, dolbyVision, uhd, trueHd)),
+            StreamResults(sources = listOf(allowed, dolbyVision, uhd, trueHd, oversized)),
         )
         val holder = SelectedContentHolder().apply { selectItem(item) }
         val viewModel = viewModel(
@@ -306,6 +307,7 @@ class DetailsViewModelTest {
                 qualities = setOf(Quality.UHD_2160),
                 hdrTypes = setOf(HdrType.DOLBY_VISION),
                 audioCodecs = setOf(AudioCodec.DOLBY_TRUEHD),
+                maxSizeBytes = 1_000,
             ),
         )
         testScheduler.advanceUntilIdle()
@@ -315,7 +317,7 @@ class DetailsViewModelTest {
 
         assertEquals(listOf("allowed"), holder.playback.value?.sources?.map { it.id })
         val ready = (viewModel.uiState.value as DetailsUiState.Content).sources as SourcesState.Ready
-        assertEquals(4, ready.sources.size)
+        assertEquals(5, ready.sources.size)
 
         viewModel.playSource(dolbyVision)
 

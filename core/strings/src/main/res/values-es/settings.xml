@@ -7,6 +7,9 @@
     <string name="settings_add_profile">Añadir perfil</string>
     <string name="settings_edit_profile">Editar perfil</string>
     <string name="settings_color">Color</string>
+    <string name="settings_language_for_this_profile">Idioma de este perfil</string>
+    <string name="settings_app_default">Idioma de la app</string>
+    <string name="settings_profile_language_override">Este perfil usa %1$s. Cambia su idioma en Gestionar perfiles.</string>
     <string name="settings_audio_for_this_profile">Audio de este perfil</string>
     <string name="settings_spanish_only_on">Solo en español: Sí</string>
     <string name="settings_spanish_only_off">Solo en español: No</string>
@@ -101,6 +104,9 @@
     <string name="settings_source_finders">Buscadores de fuentes</string>
     <string name="settings_source_exclusions">Exclusiones de fuentes</string>
     <string name="settings_source_exclusions_summary">Oculta las fuentes coincidentes y las omite en la reproducción automática. Usa Mostrar todas en la lista de fuentes para una excepción temporal.</string>
+    <string name="settings_max_source_size">Tamaño máximo de fuente</string>
+    <string name="settings_max_source_size_summary">Las fuentes más grandes se ocultan y se omiten en la reproducción automática. Las de tamaño desconocido siguen visibles.</string>
+    <string name="settings_no_limit">Sin límite</string>
     <string name="settings_quality">Calidad</string>
     <string name="settings_unknown_quality">Calidad desconocida</string>
     <string name="settings_video_features">Características de vídeo</string>

@@ -28,6 +28,7 @@ import com.shieldstream.tv.model.HdrType
 import com.shieldstream.tv.model.MemoryProfile
 import com.shieldstream.tv.model.Quality
 import com.shieldstream.tv.model.SourceExclusions
+import com.shieldstream.tv.model.SourceSizeLimits
 import com.shieldstream.tv.model.SubtitleAppearance
 import com.shieldstream.tv.model.SubtitleColor
 import androidx.compose.foundation.background
@@ -151,6 +152,7 @@ fun SettingsScreen(
                     providers = providers,
                     onToggleProvider = viewModel::toggleProvider,
                     sourceExclusions = sourceExclusions,
+                    onMaxSourceSize = viewModel::setMaxSourceSize,
                     onToggleQuality = viewModel::toggleExcludedQuality,
                     onToggleHdrType = viewModel::toggleExcludedHdrType,
                     onToggleAudioCodec = viewModel::toggleExcludedAudioCodec,
@@ -201,6 +203,7 @@ private fun SettingsList(
     providers: Set<SourceProvider>,
     onToggleProvider: (SourceProvider) -> Unit,
     sourceExclusions: SourceExclusions,
+    onMaxSourceSize: (Long?) -> Unit,
     onToggleQuality: (Quality) -> Unit,
     onToggleHdrType: (HdrType) -> Unit,
     onToggleAudioCodec: (AudioCodec) -> Unit,
@@ -316,6 +319,9 @@ private fun SettingsList(
                     modifier = Modifier.padding(start = 4.dp, top = 2.dp),
                 )
             }
+            item(key = "max-source-size") {
+                SourceSizeLimitCard(maxSizeBytes = sourceExclusions.maxSizeBytes, onChange = onMaxSourceSize)
+            }
             item(key = "excluded-quality-header") {
                 SourceExclusionGroupCard(
                     title = localizedStringResource(StringsR.string.settings_quality),
@@ -390,7 +396,7 @@ private fun SettingsList(
             item { SoftBackdropsCard() }
             item { HighResBackdropsCard() }
             item { SectionTitle("Idioma · Language") }
-            item { LanguageCard(current = state.language, onApply = onLanguage) }
+            item { LanguageCard(current = state.language, profileOverride = state.languageOverride, onApply = onLanguage) }
             item { SectionTitle(localizedStringResource(StringsR.string.settings_playback)) }
             item { MatchContentFrameRateCard(enabled = matchContentFrameRate, onChange = onMatchContentFrameRate) }
             item { ExperimentalSyncCard(enabled = state.experimentalSubtitleSync, onChange = onExperimentalSync) }
@@ -1280,12 +1286,12 @@ private fun SeekModeCard(thumbnails: Boolean, enabled: Boolean, onChange: (Boole
 }
 
 @Composable
-private fun LanguageCard(current: AppLanguage, onApply: (AppLanguage) -> Unit) {
+private fun LanguageCard(current: AppLanguage, profileOverride: AppLanguage?, onApply: (AppLanguage) -> Unit) {
     var pending by remember(current) { mutableStateOf(current) }
     FocusCard(
-        onClick = { if (pending != current) onApply(pending) },
+        onClick = { if (profileOverride == null && pending != current) onApply(pending) },
         modifier = Modifier.onPreviewKeyEvent { event ->
-            if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+            if (profileOverride != null || event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
             when (event.key) {
                 Key.DirectionLeft -> { pending = AppLanguage.ES; true }
                 Key.DirectionRight -> { pending = AppLanguage.EN; true }
@@ -1294,7 +1300,7 @@ private fun LanguageCard(current: AppLanguage, onApply: (AppLanguage) -> Unit) {
         },
     ) { focused ->
         LaunchedEffect(focused) { if (!focused) pending = current }
-        val changing = pending != current
+        val changing = profileOverride == null && pending != current
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(
@@ -1303,10 +1309,10 @@ private fun LanguageCard(current: AppLanguage, onApply: (AppLanguage) -> Unit) {
                     color = Color.White,
                 )
                 Text(
-                    if (changing) {
-                        if (pending == AppLanguage.EN) "OK to switch to English: the app will restart." else "OK para cambiar a español: la app se reiniciará."
-                    } else {
-                        localizedStringResource(StringsR.string.settings_menus_titles_and_synopses_and_preferred_audio)
+                    when {
+                        profileOverride != null -> localizedStringResource(StringsR.string.settings_profile_language_override, profileOverride.label)
+                        changing -> if (pending == AppLanguage.EN) "OK to switch to English: the app will restart." else "OK para cambiar a español: la app se reiniciará."
+                        else -> localizedStringResource(StringsR.string.settings_menus_titles_and_synopses_and_preferred_audio)
                     },
                     style = MaterialTheme.typography.bodyMedium,
                     color = if (changing) Amber else Muted,
@@ -1336,6 +1342,73 @@ private fun acceptedSummary(acceptedLabels: List<String>, acceptsAll: Boolean): 
     acceptedLabels.isEmpty() -> localizedStringResource(StringsR.string.settings_accepts_none)
     acceptsAll -> localizedStringResource(StringsR.string.settings_accepts_all)
     else -> localizedStringResource(StringsR.string.settings_accepts_values, acceptedLabels.joinToString(" · "))
+}
+
+@Composable
+private fun SourceSizeLimitCard(maxSizeBytes: Long?, onChange: (Long?) -> Unit) {
+    val options = SourceSizeLimits.OPTIONS
+    val selectedIndex = options.indexOf(maxSizeBytes).takeIf { it >= 0 } ?: 0
+
+    fun shift(delta: Int) {
+        val next = (selectedIndex + delta).coerceIn(options.indices)
+        if (next != selectedIndex) onChange(options[next])
+    }
+
+    FocusCard(
+        onClick = { shift(1) },
+        modifier = Modifier.onPreviewKeyEvent { event ->
+            if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+            when (event.key) {
+                Key.DirectionLeft -> { shift(-1); true }
+                Key.DirectionRight -> { shift(1); true }
+                else -> false
+            }
+        },
+    ) { focused ->
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    localizedStringResource(StringsR.string.settings_max_source_size),
+                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
+                    color = Color.White,
+                )
+                Text(
+                    localizedStringResource(StringsR.string.settings_max_source_size_summary),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Muted,
+                )
+            }
+            Spacer(Modifier.width(24.dp))
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Arrow("◀", enabled = focused && selectedIndex > 0)
+                    Text(
+                        maxSizeBytes?.let { "${it / SourceSizeLimits.BYTES_PER_GB} GB" }
+                            ?: localizedStringResource(StringsR.string.settings_no_limit),
+                        fontFamily = DisplayFont,
+                        fontSize = 30.sp,
+                        color = Color.White,
+                        modifier = Modifier.padding(horizontal = 18.dp),
+                    )
+                    Arrow("▶", enabled = focused && selectedIndex < options.lastIndex)
+                }
+                Spacer(Modifier.height(6.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    options.indices.forEach { index ->
+                        Box(
+                            Modifier
+                                .width(22.dp)
+                                .height(4.dp)
+                                .background(
+                                    if (index == selectedIndex) Color.White else Color.White.copy(alpha = 0.18f),
+                                    AppShapes.Pill,
+                                ),
+                        )
+                    }
+                }
+            }
+        }
+    }
 }
 
 @Composable

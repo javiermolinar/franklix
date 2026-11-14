@@ -34,6 +34,12 @@ class DetailsOverlayTest {
     }
 
     @Test
+    fun `cast and related titles are hidden for kids profiles`() {
+        assertFalse(detailsDiscoveryVisible(kidsProfile = true))
+        assertTrue(detailsDiscoveryVisible(kidsProfile = false))
+    }
+
+    @Test
     fun `source languages are capped at three codes`() {
         assertEquals("", compactLanguages(emptyList()))
         assertEquals("EN", compactLanguages(listOf("EN")))

@@ -138,6 +138,8 @@ internal fun detailsSourcesVisible(panelOpen: Boolean, actionsOpen: Boolean): Bo
 
 internal fun detailsMoreVisible(pendingPlay: Boolean): Boolean = !pendingPlay
 
+internal fun detailsDiscoveryVisible(kidsProfile: Boolean): Boolean = !kidsProfile
+
 /** Shows at most [max] language codes and summarises the rest, e.g. "EN/RU/IT +4". */
 internal fun compactLanguages(languages: List<String>, max: Int = 3): String {
     if (languages.size <= max) return languages.joinToString("/")
@@ -153,6 +155,7 @@ fun DetailsScreen(
     onPlay: () -> Unit,
     onOpenActor: (Int) -> Unit,
     onOpenItem: (CatalogItem) -> Unit,
+    kidsProfile: Boolean = false,
     viewModel: DetailsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -181,7 +184,7 @@ fun DetailsScreen(
                 color = Color.White,
                 modifier = Modifier.align(Alignment.Center),
             )
-            is DetailsUiState.Content -> DetailsContent(s, viewModel, onBack, onOpenActor, onOpenItem)
+            is DetailsUiState.Content -> DetailsContent(s, viewModel, onBack, onOpenActor, onOpenItem, kidsProfile)
         }
     }
 }
@@ -193,6 +196,7 @@ private fun DetailsContent(
     onBack: () -> Unit,
     onOpenActor: (Int) -> Unit,
     onOpenItem: (CatalogItem) -> Unit,
+    kidsProfile: Boolean,
 ) {
     var panelOpen by remember { mutableStateOf(false) }
     var actionsOpen by remember { mutableStateOf(false) }
@@ -274,23 +278,25 @@ private fun DetailsContent(
                 )
             }
 
-            Spacer(Modifier.height(20.dp))
-            if (state.details.cast.isNotEmpty()) {
-                CastRow(
-                    cast = state.details.cast,
-                    interactive = !panelOpen && !actionsOpen && episodeMenu == null,
-                    onOpenActor = onOpenActor,
+            if (detailsDiscoveryVisible(kidsProfile)) {
+                Spacer(Modifier.height(20.dp))
+                if (state.details.cast.isNotEmpty()) {
+                    CastRow(
+                        cast = state.details.cast,
+                        interactive = !panelOpen && !actionsOpen && episodeMenu == null,
+                        onOpenActor = onOpenActor,
+                    )
+                }
+                Spacer(Modifier.height(20.dp))
+                SimilarTitlesRow(
+                    mediaType = item.type,
+                    itemId = item.id,
+                    onOpenItem = { related ->
+                        viewModel.rememberSimilarFocus(related.key)
+                        onOpenItem(related)
+                    },
                 )
             }
-            Spacer(Modifier.height(20.dp))
-            SimilarTitlesRow(
-                mediaType = item.type,
-                itemId = item.id,
-                onOpenItem = { related ->
-                    viewModel.rememberSimilarFocus(related.key)
-                    onOpenItem(related)
-                },
-            )
         }
         }
 

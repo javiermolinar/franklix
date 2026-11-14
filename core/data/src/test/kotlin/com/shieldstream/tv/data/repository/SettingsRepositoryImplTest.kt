@@ -11,6 +11,7 @@ import com.shieldstream.tv.model.HdrType
 import com.shieldstream.tv.model.Profile
 import com.shieldstream.tv.model.Quality
 import com.shieldstream.tv.model.SourceExclusions
+import com.shieldstream.tv.model.SourceSizeLimits
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -67,6 +68,7 @@ class SettingsRepositoryImplTest {
             qualities = setOf(Quality.UHD_2160, Quality.SD),
             hdrTypes = setOf(HdrType.DOLBY_VISION),
             audioCodecs = setOf(AudioCodec.DOLBY_TRUEHD, AudioCodec.DTS),
+            maxSizeBytes = SourceSizeLimits.gigabytes(8),
         )
 
         val settings = repository()

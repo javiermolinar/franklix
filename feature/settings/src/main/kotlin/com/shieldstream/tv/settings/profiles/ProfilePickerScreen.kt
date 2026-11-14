@@ -34,6 +34,7 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -49,6 +50,7 @@ import com.shieldstream.tv.ui.component.AppIcons
 import com.shieldstream.tv.ui.component.ProfileAvatar
 import com.shieldstream.tv.ui.component.TvButton
 import com.shieldstream.tv.ui.component.onBackKey
+import com.shieldstream.tv.ui.component.restartApp
 import com.shieldstream.tv.ui.component.tvClickable
 import kotlinx.coroutines.delay
 
@@ -72,6 +74,11 @@ fun ProfilePickerScreen(
     var managementAction by remember { mutableStateOf<ManagementAction?>(null) }
     var managementPinError by remember { mutableStateOf<String?>(null) }
     val managementPinProfile = ProfileManagement.pinProfile(ready.profiles)
+    val context = LocalContext.current
+
+    fun selectProfile(profile: Profile) {
+        if (viewModel.select(profile.id)) restartApp(context) else onSelected()
+    }
 
     fun requestManagement(action: ManagementAction) {
         if (managementPinProfile == null || managementUnlocked) {
@@ -133,10 +140,7 @@ fun ProfilePickerScreen(
                                     pinFor = profile to manage
                                 }
                                 manage -> onEdit(profile.id)
-                                else -> {
-                                    viewModel.select(profile.id)
-                                    onSelected()
-                                }
+                                else -> selectProfile(profile)
                             }
                         },
                         modifier = if (profile.id == ready.activeId) Modifier.focusRequester(activeRequester) else Modifier,
@@ -194,8 +198,7 @@ fun ProfilePickerScreen(
                     if (forEdit) {
                         onEdit(profile.id)
                     } else {
-                        viewModel.select(profile.id)
-                        onSelected()
+                        selectProfile(profile)
                     }
                 } else {
                     pinError = wrongPinMessage

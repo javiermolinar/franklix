@@ -115,6 +115,7 @@ fun AppNavHost(
                 onExit = onExit,
                 profileInitial = active.initial,
                 profileAvatar = active.avatar,
+                kidsProfile = active.kids,
                 onSwitchProfile = { if (entry.isVisible()) navController.navigate("profiles") },
                 onOpenItem = { item ->
                     if (entry.isVisible()) {
@@ -151,18 +152,21 @@ fun AppNavHost(
             UpdatePrompt()
         }
         composable("details") { entry ->
+            val profiles: ProfilesViewModel = hiltViewModel()
+            val active by profiles.active.collectAsState()
             DetailsScreen(
                 onBack = { if (entry.isVisible()) navController.popBackStack() },
                 onPlay = { if (entry.isVisible()) navController.navigate("player") },
                 onOpenActor = { personId ->
-                    if (entry.isVisible()) navController.navigate("person/$personId")
+                    if (!active.kids && entry.isVisible()) navController.navigate("person/$personId")
                 },
                 onOpenItem = { item ->
-                    if (entry.isVisible()) {
+                    if (!active.kids && entry.isVisible()) {
                         holder.selectItem(item)
                         navController.navigate("details")
                     }
                 },
+                kidsProfile = active.kids,
             )
         }
         composable("person/{personId}") { entry ->

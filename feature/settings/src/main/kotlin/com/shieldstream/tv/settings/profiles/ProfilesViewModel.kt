@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.shieldstream.tv.domain.ProfileRepository
 import com.shieldstream.tv.domain.TraktRepository
+import com.shieldstream.tv.model.Lang
 import com.shieldstream.tv.model.Profile
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
@@ -35,8 +36,11 @@ class ProfilesViewModel @Inject constructor(
 
     val active: StateFlow<Profile> = profiles.active
 
-    fun select(id: String) {
+    /** Returns true when the caller must restart to apply the selected profile's language. */
+    fun select(id: String): Boolean {
+        val previousLanguage = Lang.current
         profiles.select(id)
         trakt.syncActive(force = true)
+        return Lang.current != previousLanguage
     }
 }

@@ -17,6 +17,7 @@ import com.shieldstream.tv.domain.IthilUpdateRepository
 import com.shieldstream.tv.domain.IthilAccessRepository
 import com.shieldstream.tv.domain.IthilLibraryState
 import com.shieldstream.tv.domain.KeyCheck
+import com.shieldstream.tv.domain.ProfileRepository
 import com.shieldstream.tv.domain.SettingsRepository
 import com.shieldstream.tv.domain.StremioAddons
 import com.shieldstream.tv.media.PlaybackPolicyProvider
@@ -81,6 +82,7 @@ sealed interface SettingsUiState {
         val memoryProfile: MemoryProfile,
         val editor: KeyEditor?,
         val language: AppLanguage = Lang.current,
+        val languageOverride: AppLanguage? = null,
     ) : SettingsUiState
 }
 
@@ -94,6 +96,7 @@ class SettingsViewModel @Inject constructor(
     private val ithilUpdates: IthilUpdateRepository,
     private val ithilScheduler: IthilDownloadScheduler,
     private val ithilAccess: IthilAccessRepository,
+    private val profiles: ProfileRepository,
 ) : ViewModel() {
 
     private val statuses = MutableStateFlow<Map<ApiService, ServiceStatus>>(emptyMap())
@@ -115,7 +118,8 @@ class SettingsViewModel @Inject constructor(
         statuses,
         playback,
         editor,
-    ) { keys, status, playback, edit ->
+        profiles.active,
+    ) { keys, status, playback, edit, active ->
         val policy = playbackPolicies.resolve(
             playback.optimization,
             playback.bufferSeconds,
@@ -142,6 +146,7 @@ class SettingsViewModel @Inject constructor(
             capabilities = playbackPolicies.capabilities,
             memoryProfile = policy.memoryProfile,
             editor = edit,
+            languageOverride = active.languageOverride,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState.Loading)
 
@@ -157,7 +162,7 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun setLanguage(language: AppLanguage, onSaved: () -> Unit) {
-        if (language == settings.language) return
+        if (profiles.active.value.languageOverride != null || language == settings.language) return
         viewModelScope.launch {
             settings.setLanguage(language)
             onSaved()
@@ -203,6 +208,12 @@ class SettingsViewModel @Inject constructor(
 
     val sourceExclusions: StateFlow<SourceExclusions> = settings.sourceExclusions
         .stateIn(viewModelScope, SharingStarted.Eagerly, SourceExclusions())
+
+    fun setMaxSourceSize(maxSizeBytes: Long?) {
+        viewModelScope.launch {
+            settings.setSourceExclusions(settings.sourceExclusions.first().copy(maxSizeBytes = maxSizeBytes))
+        }
+    }
 
     fun toggleExcludedQuality(quality: Quality) {
         viewModelScope.launch {

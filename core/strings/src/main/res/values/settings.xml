@@ -7,6 +7,9 @@
     <string name="settings_add_profile">Add profile</string>
     <string name="settings_edit_profile">Edit profile</string>
     <string name="settings_color">Color</string>
+    <string name="settings_language_for_this_profile">Language for this profile</string>
+    <string name="settings_app_default">App default</string>
+    <string name="settings_profile_language_override">This profile uses %1$s. Change its language in Manage profiles.</string>
     <string name="settings_audio_for_this_profile">Audio for this profile</string>
     <string name="settings_spanish_only_on">Spanish only: On</string>
     <string name="settings_spanish_only_off">Spanish only: Off</string>
@@ -101,6 +104,9 @@
     <string name="settings_source_finders">Source finders</string>
     <string name="settings_source_exclusions">Source exclusions</string>
     <string name="settings_source_exclusions_summary">Hide matching sources and skip them during automatic playback. Show all in the source list for a temporary override.</string>
+    <string name="settings_max_source_size">Maximum source size</string>
+    <string name="settings_max_source_size_summary">Larger sources are hidden and skipped during automatic playback. Sources with unknown sizes stay visible.</string>
+    <string name="settings_no_limit">No limit</string>
     <string name="settings_quality">Quality</string>
     <string name="settings_unknown_quality">Unknown quality</string>
     <string name="settings_video_features">Video features</string>
