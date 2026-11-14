@@ -44,7 +44,8 @@ class ProfileRepositoryImpl @Inject constructor(
 
     override fun select(id: String) {
         val profile = _profiles.value.firstOrNull { it.id == id } ?: return
-        prefs.edit().putString(KEY_ACTIVE, id).apply()
+        // Synchronous: selecting a profile with another language restarts the process right after.
+        prefs.edit().putString(KEY_ACTIVE, id).commit()
         _active.value = profile
         applyLanguage(profile)
     }
@@ -85,7 +86,9 @@ class ProfileRepositoryImpl @Inject constructor(
     }
 
     private fun store(list: List<Profile>) {
-        prefs.edit().putString(KEY_LIST, json.encodeToString(list.map { StoredProfile.from(it) })).apply()
+        // Synchronous: saving a language change restarts the process (restartApp exits), which
+        // would drop an async apply() and reload the previous profile list.
+        prefs.edit().putString(KEY_LIST, json.encodeToString(list.map { StoredProfile.from(it) })).commit()
         _profiles.value = list
     }
 
