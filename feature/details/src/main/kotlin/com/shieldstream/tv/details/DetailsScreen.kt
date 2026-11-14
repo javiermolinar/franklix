@@ -83,6 +83,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import coil.compose.AsyncImage
 import com.shieldstream.tv.domain.NewEpisodes
 import com.shieldstream.tv.model.CatalogDetails
+import com.shieldstream.tv.model.CatalogItem
 import com.shieldstream.tv.model.CastMember
 import com.shieldstream.tv.model.Episode
 import com.shieldstream.tv.model.Lang
@@ -140,6 +141,7 @@ fun DetailsScreen(
     onBack: () -> Unit,
     onPlay: () -> Unit,
     onOpenActor: (Int) -> Unit,
+    onOpenItem: (CatalogItem) -> Unit,
     viewModel: DetailsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -168,7 +170,7 @@ fun DetailsScreen(
                 color = Color.White,
                 modifier = Modifier.align(Alignment.Center),
             )
-            is DetailsUiState.Content -> DetailsContent(s, viewModel, onBack, onOpenActor)
+            is DetailsUiState.Content -> DetailsContent(s, viewModel, onBack, onOpenActor, onOpenItem)
         }
     }
 }
@@ -179,6 +181,7 @@ private fun DetailsContent(
     viewModel: DetailsViewModel,
     onBack: () -> Unit,
     onOpenActor: (Int) -> Unit,
+    onOpenItem: (CatalogItem) -> Unit,
 ) {
     var panelOpen by remember { mutableStateOf(false) }
     var actionsOpen by remember { mutableStateOf(false) }
@@ -197,14 +200,21 @@ private fun DetailsContent(
     }
 
     val playRequester = remember { FocusRequester() }
+    var skipPlayFocus by remember { mutableStateOf(viewModel.consumeSimilarFocusRestore()) }
     LaunchedEffect(Unit) {
+        if (skipPlayFocus) return@LaunchedEffect
         withFrameNanos { }
         runCatching { playRequester.requestFocus() }
     }
     LaunchedEffect(panelOpen, actionsOpen, episodeMenu) {
         if (!panelOpen && !actionsOpen && episodeMenu == null) {
-            withFrameNanos { }
-            runCatching { playRequester.requestFocus() }
+            if (skipPlayFocus) {
+                withFrameNanos { }
+                skipPlayFocus = false
+            } else {
+                withFrameNanos { }
+                runCatching { playRequester.requestFocus() }
+            }
         }
     }
 
@@ -268,14 +278,29 @@ private fun DetailsContent(
                 )
             }
 
+            Spacer(Modifier.height(20.dp))
+            Text(
+                text = "↓ " + localizedStringResource(StringsR.string.details_cast_crew_and_similar),
+                color = Color.White.copy(alpha = 0.6f),
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(start = 56.dp),
+            )
             if (state.details.cast.isNotEmpty()) {
-                Spacer(Modifier.height(20.dp))
                 CastRow(
                     cast = state.details.cast,
                     interactive = !panelOpen && !actionsOpen && episodeMenu == null,
                     onOpenActor = onOpenActor,
                 )
             }
+            Spacer(Modifier.height(20.dp))
+            SimilarTitlesRow(
+                mediaType = item.type,
+                itemId = item.id,
+                onOpenItem = { related ->
+                    viewModel.rememberSimilarFocus(related.key)
+                    onOpenItem(related)
+                },
+            )
         }
         }
 

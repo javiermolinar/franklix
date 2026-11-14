@@ -48,7 +48,9 @@ import com.shieldstream.tv.network.api.TorrentioApi
 import com.shieldstream.tv.data.security.TokenStore
 import com.shieldstream.tv.network.di.ApiConfig
 import com.shieldstream.tv.network.dto.TmdbImagesDto
+import com.shieldstream.tv.network.dto.TmdbMovieDto
 import com.shieldstream.tv.network.dto.TmdbTranslationsDto
+import com.shieldstream.tv.network.dto.TmdbTvDto
 import com.shieldstream.tv.network.dto.TorrentioStreamDto
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -210,6 +212,56 @@ class CatalogRepositoryImpl @Inject constructor(
             HomeFilter.TV -> shows
         }
     }
+
+    private val recommendationCache = ConcurrentHashMap<String, Cached>()
+    private val recommendationLocks = ConcurrentHashMap<String, Mutex>()
+
+    override suspend fun getRecommendations(item: CatalogItem): List<CatalogItem> {
+        val id = item.id.toIntOrNull() ?: return emptyList()
+        val cacheKey = "${Lang.current.code}:$kids:${item.key}"
+        return recommendationLocks.getOrPut(cacheKey) { Mutex() }.withLock {
+            recommendationCache[cacheKey]?.takeIf { System.currentTimeMillis() - it.at < RECOMMENDATIONS_CACHE_MS }?.let { cached ->
+                @Suppress("UNCHECKED_CAST")
+                return@withLock cached.value as List<CatalogItem>
+            }
+            val loaded = when (item.type) {
+                MediaType.MOVIE -> movieRecommendations(id)
+                MediaType.TV -> tvRecommendations(id)
+            }
+            recommendationCache[cacheKey] = Cached(System.currentTimeMillis(), loaded)
+            loaded
+        }
+    }
+
+    private suspend fun movieRecommendations(id: Int): List<CatalogItem> {
+        val recommended = tmdb.movieRecommendations(id, key).results.toMovieRecommendationItems()
+        val candidates = if (recommended.size < MIN_RECOMMENDATIONS) {
+            recommended + tmdb.movieSimilar(id, key).results.toMovieRecommendationItems()
+        } else {
+            recommended
+        }
+        return candidates.distinctBy { it.key }.take(MAX_RECOMMENDATIONS)
+    }
+
+    private suspend fun tvRecommendations(id: Int): List<CatalogItem> {
+        val recommended = tmdb.tvRecommendations(id, key).results.toTvRecommendationItems()
+        val candidates = if (recommended.size < MIN_RECOMMENDATIONS) {
+            recommended + tmdb.tvSimilar(id, key).results.toTvRecommendationItems()
+        } else {
+            recommended
+        }
+        return candidates.distinctBy { it.key }.take(MAX_RECOMMENDATIONS)
+    }
+
+    private fun List<TmdbMovieDto>.toMovieRecommendationItems(): List<CatalogItem> =
+        filter { !kids || it.genre_ids.any { genre -> genre in KIDS_GENRES } }
+            .map { it.toCatalogItem() }
+            .filter { it.posterUrl != null }
+
+    private fun List<TmdbTvDto>.toTvRecommendationItems(): List<CatalogItem> =
+        filter { !kids || it.genre_ids.any { genre -> genre in KIDS_GENRES } }
+            .map { it.toCatalogItem() }
+            .filter { it.posterUrl != null }
 
     override suspend fun getDetails(item: CatalogItem): CatalogDetails {
         val id = item.id.toIntOrNull() ?: return CatalogDetails(item)
@@ -769,6 +821,9 @@ class CatalogRepositoryImpl @Inject constructor(
 
     private companion object {
         val KIDS_GENRES = setOf(16, 10751, 10762)
+        const val MIN_RECOMMENDATIONS = 10
+        const val MAX_RECOMMENDATIONS = 20
+        const val RECOMMENDATIONS_CACHE_MS = 6 * 60 * 60 * 1000L
         const val PROVIDER_TIMEOUT_MS = 25_000L
         const val BROWSER_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
         val MAGNET = Regex("magnet:\\?xt=urn:btih:([a-fA-F0-9]{40})([^\"'<>\\s]*)")

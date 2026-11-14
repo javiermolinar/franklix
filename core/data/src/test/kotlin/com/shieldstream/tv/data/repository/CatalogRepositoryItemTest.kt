@@ -12,7 +12,10 @@ import com.shieldstream.tv.network.api.TmdbApi
 import com.shieldstream.tv.network.api.TorrentioApi
 import com.shieldstream.tv.network.dto.TmdbExternalIdsDto
 import com.shieldstream.tv.network.dto.TmdbMovieDetailDto
+import com.shieldstream.tv.network.dto.TmdbMovieDto
+import com.shieldstream.tv.network.dto.TmdbPaginated
 import com.shieldstream.tv.network.dto.TmdbTvDetailDto
+import com.shieldstream.tv.network.dto.TmdbTvDto
 import com.shieldstream.tv.strings.Texts
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -84,6 +87,45 @@ class CatalogRepositoryItemTest {
         assertEquals("Cached", repository.getItem(MediaType.MOVIE, "7")?.title)
         assertEquals("Cached", repository.cachedItem(MediaType.MOVIE, "7")?.title)
         coVerify(exactly = 0) { tmdb.movieDetails(any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `recommendations append similar titles without duplicates and are cached`() = runTest {
+        coEvery { tmdb.movieRecommendations(9, any()) } returns TmdbPaginated(
+            results = listOf(
+                TmdbMovieDto(id = 1, title = "First", poster_path = "/1.jpg"),
+                TmdbMovieDto(id = 2, title = "Second", poster_path = "/2.jpg"),
+            ),
+        )
+        coEvery { tmdb.movieSimilar(9, any()) } returns TmdbPaginated(
+            results = listOf(
+                TmdbMovieDto(id = 2, title = "Duplicate", poster_path = "/2.jpg"),
+                TmdbMovieDto(id = 3, title = "Third", poster_path = "/3.jpg"),
+            ),
+        )
+        val origin = movie("9", "Origin")
+
+        val first = repository.getRecommendations(origin)
+        val second = repository.getRecommendations(origin)
+
+        assertEquals(listOf("First", "Second", "Third"), first.map { it.title })
+        assertEquals(first, second)
+        coVerify(exactly = 1) { tmdb.movieRecommendations(9, any()) }
+        coVerify(exactly = 1) { tmdb.movieSimilar(9, any()) }
+    }
+
+    @Test
+    fun `tv recommendations keep enough results without requesting similar titles`() = runTest {
+        coEvery { tmdb.tvRecommendations(42, any()) } returns TmdbPaginated(
+            results = List(10) { index -> TmdbTvDto(id = index + 1, name = "Show $index", poster_path = "/$index.jpg") },
+        )
+        val origin = CatalogItem("42", null, MediaType.TV, "Origin", "", null, null, null, null)
+
+        val items = repository.getRecommendations(origin)
+
+        assertEquals(10, items.size)
+        coVerify(exactly = 1) { tmdb.tvRecommendations(42, any()) }
+        coVerify(exactly = 0) { tmdb.tvSimilar(any(), any()) }
     }
 
     @Test

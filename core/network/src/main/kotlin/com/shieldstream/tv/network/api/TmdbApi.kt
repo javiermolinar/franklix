@@ -136,6 +136,30 @@ interface TmdbApi {
         @Query("api_key") key: String,
     ): TmdbSeasonDto
 
+    @GET("3/movie/{id}/recommendations")
+    suspend fun movieRecommendations(
+        @Path("id") id: Int,
+        @Query("api_key") key: String,
+    ): TmdbPaginated<TmdbMovieDto>
+
+    @GET("3/movie/{id}/similar")
+    suspend fun movieSimilar(
+        @Path("id") id: Int,
+        @Query("api_key") key: String,
+    ): TmdbPaginated<TmdbMovieDto>
+
+    @GET("3/tv/{id}/recommendations")
+    suspend fun tvRecommendations(
+        @Path("id") id: Int,
+        @Query("api_key") key: String,
+    ): TmdbPaginated<TmdbTvDto>
+
+    @GET("3/tv/{id}/similar")
+    suspend fun tvSimilar(
+        @Path("id") id: Int,
+        @Query("api_key") key: String,
+    ): TmdbPaginated<TmdbTvDto>
+
     @GET("3/person/{id}")
     suspend fun personDetails(
         @Path("id") id: Int,

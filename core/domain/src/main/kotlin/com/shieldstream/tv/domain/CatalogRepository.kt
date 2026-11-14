@@ -25,6 +25,9 @@ interface CatalogRepository {
 
     suspend fun getDetails(item: CatalogItem): CatalogDetails
 
+    /** TMDB recommendations, supplemented with similar titles when recommendations are sparse. */
+    suspend fun getRecommendations(item: CatalogItem): List<CatalogItem>
+
     suspend fun getItem(type: MediaType, id: String): CatalogItem?
 
     /** An item already in memory or in the persistent cache, without any network request. */

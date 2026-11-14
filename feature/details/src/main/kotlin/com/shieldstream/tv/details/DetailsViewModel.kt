@@ -521,6 +521,14 @@ class DetailsViewModel @Inject constructor(
 
     fun consumeMessage() = updateContent { it.copy(message = null) }
 
+    private var similarFocusKey: String? = null
+
+    fun rememberSimilarFocus(key: String) {
+        similarFocusKey = key
+    }
+
+    fun consumeSimilarFocusRestore(): Boolean = (similarFocusKey != null).also { similarFocusKey = null }
+
     fun onScreenResumed() {
         val next = holder.consumeNextRequest() ?: return
         val c = content() ?: return

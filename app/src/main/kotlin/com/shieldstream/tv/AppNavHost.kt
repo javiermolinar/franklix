@@ -157,6 +157,12 @@ fun AppNavHost(
                 onOpenActor = { personId ->
                     if (entry.isVisible()) navController.navigate("person/$personId")
                 },
+                onOpenItem = { item ->
+                    if (entry.isVisible()) {
+                        holder.selectItem(item)
+                        navController.navigate("details")
+                    }
+                },
             )
         }
         composable("person/{personId}") { entry ->
