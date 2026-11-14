@@ -72,7 +72,6 @@
     <string name="details_hide_excluded">Apply exclusions</string>
     <string name="details_no_sources_match_exclusions">No sources match your exclusion settings</string>
     <string name="details_more_like_this">More like this</string>
-    <string name="details_cast_crew_and_similar">Cast &amp; crew · More like this</string>
     <string name="details_no_similar_titles">No similar titles found.</string>
     <string name="details_similar_load_error">Couldn\'t load similar titles.</string>
     <string name="details_cast">Cast</string>

@@ -240,7 +240,12 @@ private fun DetailsContent(
         )
         Box(
             Modifier.fillMaxSize().background(
-                Brush.verticalGradient(0.40f to Color.Transparent, 1f to Color.Black),
+                Brush.verticalGradient(
+                    0.25f to Color.Transparent,
+                    0.55f to Color.Black.copy(alpha = 0.90f),
+                    0.70f to Color.Black,
+                    1f to Color.Black,
+                ),
             ),
         )
 
@@ -279,12 +284,6 @@ private fun DetailsContent(
             }
 
             Spacer(Modifier.height(20.dp))
-            Text(
-                text = "↓ " + localizedStringResource(StringsR.string.details_cast_crew_and_similar),
-                color = Color.White.copy(alpha = 0.6f),
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(start = 56.dp),
-            )
             if (state.details.cast.isNotEmpty()) {
                 CastRow(
                     cast = state.details.cast,

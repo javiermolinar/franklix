@@ -72,7 +72,6 @@
     <string name="details_hide_excluded">Aplicar exclusiones</string>
     <string name="details_no_sources_match_exclusions">Ninguna fuente supera tus filtros de exclusión</string>
     <string name="details_more_like_this">Títulos similares</string>
-    <string name="details_cast_crew_and_similar">Reparto y equipo · Títulos similares</string>
     <string name="details_no_similar_titles">No se encontraron títulos similares.</string>
     <string name="details_similar_load_error">No se pudieron cargar los títulos similares.</string>
     <string name="details_cast">Reparto</string>

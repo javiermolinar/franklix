@@ -113,6 +113,7 @@ fun SimilarTitlesRow(
                                 item = item,
                                 onClick = { onOpenItem(item) },
                                 onFocused = { lastCardKey = item.key },
+                                width = 120.dp,
                                 modifier = if (item.key == lastCardKey) Modifier.focusRequester(cardRequester) else Modifier,
                             )
                         }
