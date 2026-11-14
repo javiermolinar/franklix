@@ -8,6 +8,7 @@ import androidx.media3.common.TrackGroup
 import androidx.media3.common.TrackSelectionParameters
 import androidx.media3.common.Tracks
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.lifecycle.viewModelScope
 import com.shieldstream.tv.domain.CatalogCacheRefresher
 import com.shieldstream.tv.domain.ProfileRepository
 import com.shieldstream.tv.domain.ResolveState
@@ -40,12 +41,16 @@ import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.runCurrent
+import kotlinx.coroutines.test.runTest
 import org.junit.rules.TestWatcher
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -151,6 +156,34 @@ class PlayerViewModelTest {
         players.listener(0).onPlaybackStateChanged(Player.STATE_ENDED)
 
         verify(exactly = 1) { fixture.watchProgress.save("movie:1", 120_000L, 120_000L, "source") }
+    }
+
+    @Test
+    fun `credits prompt appears without autoplay or automatic advancement`() = runTest {
+        val next = NextEpisode("1", 1, 2, "S1:E2")
+        val players = FakePlayers(Tracks.EMPTY)
+        val fixture = fixture(
+            players = players,
+            bufferSecondsFlow = flowOf(40),
+            subtitlePreference = SubtitlePreference.OFF,
+            nextEpisode = next,
+            autoNext = false,
+        )
+        fixture.viewModel.start()
+        yield()
+        every { players.player(0).duration } returns 600_000L
+        every { players.player(0).currentPosition } returns 590_000L
+
+        advanceTimeBy(650)
+        runCurrent()
+
+        val prompt = fixture.viewModel.nextUp.value as? NextUpUiState.Showing
+        assertNotNull(prompt)
+        assertEquals(next.label, prompt?.label)
+        assertNull(prompt?.secondsLeft)
+        assertNull(fixture.holder.consumeNextRequest())
+        fixture.viewModel.onStop()
+        fixture.viewModel.viewModelScope.cancel()
     }
 
     @Test

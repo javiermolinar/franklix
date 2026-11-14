@@ -144,7 +144,7 @@
     <string name="settings_on">Sí</string>
     <string name="settings_off_9847b4">No</string>
     <string name="settings_autoplay_next_episode">Siguiente episodio automático</string>
-    <string name="settings_shows_during_the_credits_next_episode_appears">Series: en los créditos sale \"Siguiente episodio\" (OK lo pone ya) y, al terminar el episodio, empieza el siguiente.</string>
+    <string name="settings_shows_during_the_credits_next_episode_appears">Series: en los créditos siempre sale \"Siguiente episodio\" (OK lo pone ya). Si la reproducción automática está activada, el siguiente empieza solo.</string>
     <string name="settings_new_episode_notifications">Avisos de nuevos episodios</string>
     <string name="settings_followed_shows_only_checks_for_releases_every">Solo series seguidas. Comprueba estrenos cada 12 horas con conexión; no avisa de episodios vistos o descartados.</string>
     <string name="settings_device_optimization">Optimización del dispositivo</string>

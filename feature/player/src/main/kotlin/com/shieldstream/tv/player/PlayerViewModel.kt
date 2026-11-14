@@ -67,7 +67,7 @@ sealed interface SkipPromptUiState {
 
 sealed interface NextUpUiState {
     data object Hidden : NextUpUiState
-    data class Showing(val label: String, val secondsLeft: Int) : NextUpUiState
+    data class Showing(val label: String, val secondsLeft: Int?) : NextUpUiState
 }
 
 @OptIn(UnstableApi::class)
@@ -324,7 +324,7 @@ class PlayerViewModel @Inject constructor(
 
     private fun updateNextUp(position: Long, duration: Long) {
         val next = nextSnapshot
-        if (next == null || !autoNext.value || duration <= MIN_EPISODE_MS || wentNext) {
+        if (next == null || duration <= MIN_EPISODE_MS || wentNext) {
             _nextUp.value = NextUpUiState.Hidden
             return
         }
@@ -351,11 +351,11 @@ class PlayerViewModel @Inject constructor(
         }
         if (nextUpShownAt < 0) nextUpShownAt = position
         val goAt = if (autoAt < duration) minOf(maxOf(autoAt, nextUpShownAt + NEXT_UP_COUNTDOWN_MS), duration) else duration
-        if (goAt < duration && position >= goAt) {
+        if (autoNext.value && goAt < duration && position >= goAt) {
             playNextNow()
             return
         }
-        val secondsLeft = ((goAt - position + 999) / 1000).toInt().coerceAtLeast(0)
+        val secondsLeft = if (autoNext.value) ((goAt - position + 999) / 1000).toInt().coerceAtLeast(0) else null
         _nextUp.value = NextUpUiState.Showing(next.label, secondsLeft)
         if (!prefetched) {
             prefetched = true
