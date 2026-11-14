@@ -25,6 +25,10 @@ private const val SoftHeight = 180
  */
 private const val SoftRadius = 3
 
+/** Decode size for sharp baked backdrops: TMDB's w1280, so the common case decodes without scaling. */
+private const val SharpWidth = 1280
+private const val SharpHeight = 720
+
 /**
  * Full-screen backdrop that is blurred once while loading, Muzei-style. The blur runs on Coil's
  * background decoder on a 320×180 bitmap; the result is an ordinary bitmap, so drawing and
@@ -38,7 +42,34 @@ fun SoftBackdropImage(url: String, modifier: Modifier = Modifier, scrims: List<B
         ImageRequest.Builder(context)
             .data(url)
             .size(SoftWidth, SoftHeight)
-            .transformations(if (scrims.isEmpty()) SoftenTransformation else SoftenWithScrimsTransformation(scrims))
+            .transformations(
+                if (scrims.isEmpty()) SoftenTransformation
+                else BakedScrimsTransformation(SoftWidth, SoftHeight, SoftRadius, scrims),
+            )
+            .build()
+    }
+    AsyncImage(
+        model = request,
+        contentDescription = null,
+        contentScale = ContentScale.Crop,
+        modifier = modifier,
+    )
+}
+
+/**
+ * Sharp full-screen backdrop with [scrims] baked into an opaque 1280×720 bitmap. Use it instead of an
+ * image plus full-screen gradient overlays on screens that scroll over a fixed backdrop: every scroll
+ * frame redraws the whole screen, and each extra full-screen layer costs GPU time on the Nokia 8010.
+ * The baking runs once per image on Coil's background decoder.
+ */
+@Composable
+fun ScrimmedBackdropImage(url: String, scrims: List<BackdropScrim>, modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    val request = remember(url, scrims) {
+        ImageRequest.Builder(context)
+            .data(url)
+            .size(SharpWidth, SharpHeight)
+            .transformations(BakedScrimsTransformation(SharpWidth, SharpHeight, blurRadius = 0, scrims))
             .build()
     }
     AsyncImage(
@@ -100,28 +131,38 @@ data class BackdropScrim(
 }
 
 /**
- * Softens the backdrop and composites [scrims] into an opaque 16:9 bitmap. Drawing the same scrims as
- * full-screen gradients over the image cost about 22 ms of GPU time per frame on the Nokia 8010,
- * because Compose redraws the whole screen on every row scroll; the baked bitmap is one opaque draw.
- * The bitmap is centre-cropped to 16:9 so the baked scrims line up with a full-screen, cropped image.
+ * Optionally softens the backdrop and composites [scrims] into an opaque [width]×[height] bitmap.
+ * Drawing the same scrims as full-screen gradients over the image cost about 22 ms of GPU time per
+ * frame on the Nokia 8010, because Compose redraws the whole screen on every row scroll; the baked
+ * bitmap is one opaque draw. The bitmap is centre-cropped to the target aspect ratio so the baked
+ * scrims line up with a full-screen, cropped image. [blurRadius] 0 keeps it sharp.
  */
-private class SoftenWithScrimsTransformation(private val scrims: List<BackdropScrim>) : Transformation {
-    override val cacheKey: String = "soften-scrims-$SoftWidth-$SoftRadius-${scrims.hashCode()}"
+private class BakedScrimsTransformation(
+    private val width: Int,
+    private val height: Int,
+    private val blurRadius: Int,
+    private val scrims: List<BackdropScrim>,
+) : Transformation {
+    override val cacheKey: String = if (blurRadius > 0) {
+        "soften-scrims-$width-$blurRadius-${scrims.hashCode()}"
+    } else {
+        "scrims-$width-$height-${scrims.hashCode()}"
+    }
 
     override suspend fun transform(input: Bitmap, size: Size): Bitmap {
-        val scale = maxOf(SoftWidth.toFloat() / input.width, SoftHeight.toFloat() / input.height)
-        val scaledWidth = (input.width * scale).toInt().coerceAtLeast(SoftWidth)
-        val scaledHeight = (input.height * scale).toInt().coerceAtLeast(SoftHeight)
+        val scale = maxOf(width.toFloat() / input.width, height.toFloat() / input.height)
+        val scaledWidth = (input.width * scale).toInt().coerceAtLeast(width)
+        val scaledHeight = (input.height * scale).toInt().coerceAtLeast(height)
         val scaled = Bitmap.createScaledBitmap(input, scaledWidth, scaledHeight, true)
-        val pixels = IntArray(SoftWidth * SoftHeight)
+        val pixels = IntArray(width * height)
         scaled.getPixels(
-            pixels, 0, SoftWidth,
-            (scaledWidth - SoftWidth) / 2, (scaledHeight - SoftHeight) / 2, SoftWidth, SoftHeight,
+            pixels, 0, width,
+            (scaledWidth - width) / 2, (scaledHeight - height) / 2, width, height,
         )
-        boxBlur(pixels, SoftWidth, SoftHeight, SoftRadius)
-        applyScrims(pixels, SoftWidth, SoftHeight, scrims, AppColors.Background.toArgb())
-        val output = Bitmap.createBitmap(SoftWidth, SoftHeight, Bitmap.Config.ARGB_8888)
-        output.setPixels(pixels, 0, SoftWidth, 0, 0, SoftWidth, SoftHeight)
+        boxBlur(pixels, width, height, blurRadius)
+        applyScrims(pixels, width, height, scrims, AppColors.Background.toArgb())
+        val output = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        output.setPixels(pixels, 0, width, 0, 0, width, height)
         // Opaque bitmaps draw without blending, so the GPU can skip the background fills beneath.
         output.setHasAlpha(false)
         return output
