@@ -148,6 +148,7 @@ fun MainScreen(
                 selectedRequester = railRequester,
                 contentRequester = contentRequester,
                 focusable = railFocusable,
+                showSettings = !kidsProfile,
                 newEpisodeCount = (episodeState as? EpisodeCenterUiState.Content)?.newEpisodeCount ?: 0,
                 tabs = tabs,
                 profileInitial = profileInitial,

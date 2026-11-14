@@ -94,6 +94,7 @@ fun NavRail(
     modifier: Modifier = Modifier,
     contentRequester: FocusRequester = FocusRequester.Default,
     focusable: Boolean = true,
+    showSettings: Boolean = true,
     profileInitial: String? = null,
     profileAvatar: Int = 0,
     onProfile: () -> Unit = {},
@@ -158,15 +159,17 @@ fun NavRail(
                 ) { tint -> RailIcon(tab.icon, label.takeUnless { expanded }, tint) }
             }
             Spacer(Modifier.weight(1f))
-            val settingsLabel = localizedStringResource(StringsR.string.common_settings)
-            RailItem(
-                label = settingsLabel,
-                selected = false,
-                expanded = expanded,
-                onClick = onSettings,
-                contentRequester = contentRequester,
-                focusable = focusable,
-            ) { tint -> RailIcon(LineIcons.Settings, settingsLabel.takeUnless { expanded }, tint) }
+            if (showSettings) {
+                val settingsLabel = localizedStringResource(StringsR.string.common_settings)
+                RailItem(
+                    label = settingsLabel,
+                    selected = false,
+                    expanded = expanded,
+                    onClick = onSettings,
+                    contentRequester = contentRequester,
+                    focusable = focusable,
+                ) { tint -> RailIcon(LineIcons.Settings, settingsLabel.takeUnless { expanded }, tint) }
+            }
         }
     }
 }

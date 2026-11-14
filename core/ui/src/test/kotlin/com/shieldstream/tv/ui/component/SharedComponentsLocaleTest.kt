@@ -113,6 +113,15 @@ class SharedComponentsLocaleTest {
     }
 
     @Test
+    fun `rail hides settings when settings action is disabled`() {
+        Lang.current = AppLanguage.EN
+        renderRail(showSettings = false)
+
+        composeRule.onNodeWithContentDescription("Home").assertExists()
+        composeRule.onNodeWithContentDescription("Settings").assertDoesNotExist()
+    }
+
+    @Test
     fun `model labels render in Spanish`() {
         Lang.current = AppLanguage.ES
         renderModelLabels()
@@ -184,13 +193,14 @@ class SharedComponentsLocaleTest {
         }
     }
 
-    private fun renderRail() {
+    private fun renderRail(showSettings: Boolean = true) {
         composeRule.setContent {
             NavRail(
                 selected = NavTab.HOME,
                 onSelect = {},
                 onSettings = {},
                 selectedRequester = FocusRequester(),
+                showSettings = showSettings,
             )
         }
     }
