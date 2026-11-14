@@ -254,4 +254,8 @@
     <string name="update_installing_version">Pulsa \"Instalar\" en la ventana de Android. Franklix se cerrará y al abrirla ya estará la %1$s.</string>
     <string name="update_latest_version">Tienes la última versión (%1$s). OK para volver a mirar.</string>
     <string name="update_new_version">Versión nueva: %1$s</string>
+    <string name="settings_age_limit">Límite de edad</string>
+    <string name="settings_age_limit_all">Solo TP</string>
+    <string name="settings_age_limit_up_to">Hasta %1$d</string>
+    <string name="settings_age_limit_summary">En este perfil no se pueden reproducir títulos calificados por encima del límite ni los que no tienen calificación por edad.</string>
 </resources>

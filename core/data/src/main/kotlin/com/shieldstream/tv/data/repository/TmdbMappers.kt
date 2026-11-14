@@ -1,14 +1,18 @@
 package com.shieldstream.tv.data.repository
 
+import com.shieldstream.tv.domain.AgeRatings
 import com.shieldstream.tv.model.CatalogItem
 import com.shieldstream.tv.model.CastMember
+import com.shieldstream.tv.model.Lang
 import com.shieldstream.tv.model.MediaType
 import com.shieldstream.tv.model.PersonDetails
 import com.shieldstream.tv.network.dto.TmdbCastDto
+import com.shieldstream.tv.network.dto.TmdbContentRatingsDto
 import com.shieldstream.tv.network.dto.TmdbImageDto
 import com.shieldstream.tv.network.dto.TmdbImagesDto
 import com.shieldstream.tv.network.dto.TmdbMovieDto
 import com.shieldstream.tv.network.dto.TmdbPersonDto
+import com.shieldstream.tv.network.dto.TmdbReleaseDatesDto
 import com.shieldstream.tv.network.dto.TmdbSearchResultDto
 import com.shieldstream.tv.network.dto.TmdbTvDto
 
@@ -106,4 +110,15 @@ internal fun TmdbSearchResultDto.toCatalogItemOrNull(): CatalogItem? {
         rating = vote_average.toFloat(),
         releaseDate = release_date ?: first_air_date,
     )
+}
+
+/** Minimum age from a movie's `release_dates`: the first non-empty certification per country. */
+internal fun TmdbReleaseDatesDto?.minimumAge(): Int? = AgeRatings.pick(AgeRatings.countries(Lang.isEnglish)) { country ->
+    this?.results?.firstOrNull { it.iso_3166_1 == country }
+        ?.release_dates?.map { it.certification.trim() }?.firstOrNull { it.isNotEmpty() }
+}
+
+/** Minimum age from a show's `content_ratings`. */
+internal fun TmdbContentRatingsDto?.minimumAge(): Int? = AgeRatings.pick(AgeRatings.countries(Lang.isEnglish)) { country ->
+    this?.results?.firstOrNull { it.iso_3166_1 == country }?.rating
 }

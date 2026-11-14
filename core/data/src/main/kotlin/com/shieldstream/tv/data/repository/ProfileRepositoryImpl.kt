@@ -139,6 +139,7 @@ class ProfileRepositoryImpl @Inject constructor(
         val subtitleApplyEmbeddedStyles: Boolean? = null,
         val experimentalSubtitleSync: Boolean? = null,
         val matchContentFrameRate: Boolean? = null,
+        val maxAge: Int? = null,
     ) {
         fun toProfile(legacyFirst: Boolean, legacyOnly: Boolean, legacyHidden: Set<String>) = Profile(
             id, name, avatar, traktUser, pinHash, kids,
@@ -157,6 +158,7 @@ class ProfileRepositoryImpl @Inject constructor(
             ).normalized(),
             experimentalSubtitleSync = experimentalSubtitleSync ?: true,
             matchContentFrameRate = matchContentFrameRate ?: true,
+            maxAge = maxAge,
         )
 
         companion object {
@@ -180,6 +182,7 @@ class ProfileRepositoryImpl @Inject constructor(
                 subtitleApplyEmbeddedStyles = p.subtitleAppearance.applyEmbeddedStyles,
                 experimentalSubtitleSync = p.experimentalSubtitleSync,
                 matchContentFrameRate = p.matchContentFrameRate,
+                maxAge = p.maxAge,
             )
         }
     }

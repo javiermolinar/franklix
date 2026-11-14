@@ -6,6 +6,7 @@ import com.shieldstream.tv.domain.EpisodeTrackingRepository
 import com.shieldstream.tv.domain.MyListRepository
 import com.shieldstream.tv.domain.ITHIL_ALLDEBRID
 import com.shieldstream.tv.domain.PrioritizeSourcesUseCase
+import com.shieldstream.tv.domain.ProfileRepository
 import com.shieldstream.tv.domain.RealDebridRepository
 import com.shieldstream.tv.domain.SelectedContentHolder
 import com.shieldstream.tv.domain.SettingsRepository
@@ -22,6 +23,7 @@ import com.shieldstream.tv.model.DeviceOptimization
 import com.shieldstream.tv.model.Episode
 import com.shieldstream.tv.model.HdrType
 import com.shieldstream.tv.model.MediaType
+import com.shieldstream.tv.model.Profile
 import com.shieldstream.tv.model.Quality
 import com.shieldstream.tv.model.Season
 import com.shieldstream.tv.model.SourceExclusions
@@ -451,12 +453,66 @@ class DetailsViewModelTest {
         )
     }
 
+    @Test
+    fun `kids age limit blocks playback above the limit and for unrated titles`() = runTest {
+        val kids = Profile(id = "kids", name = "Kids", avatar = 0, kids = true, maxAge = 7)
+        for (minimumAge in listOf(16, null)) {
+            val item = ageMovie()
+            val catalog = mockk<CatalogRepository>()
+            coEvery { catalog.getDetails(item) } returns CatalogDetails(item = item, minimumAge = minimumAge)
+            every { catalog.getStreams(item, null) } returns flowOf(StreamResults(sources = listOf(source(Episode(1, 1, "", "", null, null)))))
+            val holder = SelectedContentHolder().apply { selectItem(item, playImmediately = true) }
+
+            val viewModel = viewModel(catalog, holder, profile = kids)
+            testScheduler.advanceUntilIdle()
+
+            val content = viewModel.uiState.value as DetailsUiState.Content
+            assertTrue(content.ageBlocked)
+            assertNull(holder.playback.value)
+            assertEquals(false, content.pendingPlay)
+        }
+    }
+
+    @Test
+    fun `kids age limit allows titles rated within it and adult profiles ignore it`() = runTest {
+        val cases = listOf(
+            Profile(id = "kids", name = "Kids", avatar = 0, kids = true, maxAge = 7) to 7,
+            Profile(id = "adult", name = "Adult", avatar = 0, maxAge = 7) to 18,
+        )
+        for ((profile, minimumAge) in cases) {
+            val item = ageMovie()
+            val catalog = mockk<CatalogRepository>()
+            coEvery { catalog.getDetails(item) } returns CatalogDetails(item = item, minimumAge = minimumAge)
+            every { catalog.getStreams(item, null) } returns flowOf(StreamResults(sources = listOf(source(Episode(1, 1, "", "", null, null)))))
+            val holder = SelectedContentHolder().apply { selectItem(item, playImmediately = true) }
+
+            val viewModel = viewModel(catalog, holder, profile = profile)
+            testScheduler.advanceUntilIdle()
+
+            assertEquals(false, (viewModel.uiState.value as DetailsUiState.Content).ageBlocked)
+            assertEquals(1, holder.playback.value?.sources?.size)
+        }
+    }
+
+    private fun ageMovie() = CatalogItem(
+        id = "77",
+        imdbId = "tt77",
+        type = MediaType.MOVIE,
+        title = "Movie",
+        overview = "",
+        posterUrl = null,
+        backdropUrl = null,
+        year = 2020,
+        rating = null,
+    )
+
     private fun viewModel(
         catalog: CatalogRepository,
         holder: SelectedContentHolder,
         watchProgress: WatchProgressRepository? = null,
         exclusions: SourceExclusions = SourceExclusions(),
         trakt: TraktRepository = mockk(relaxed = true),
+        profile: Profile = Profile(id = "test", name = "Test", avatar = 0),
     ): DetailsViewModel =
         DetailsViewModel(
             catalogRepository = catalog,
@@ -488,6 +544,7 @@ class DetailsViewModelTest {
             tracking = mockk<EpisodeTrackingRepository>(relaxed = true) {
                 every { followedShowIds } returns MutableStateFlow(emptySet())
             },
+            profiles = mockk<ProfileRepository> { every { active } returns MutableStateFlow(profile) },
             texts = mockk<Texts>(relaxed = true),
             sourceProcessingDispatcher = SourceProcessingDispatcher(mainDispatcher.dispatcher),
         )

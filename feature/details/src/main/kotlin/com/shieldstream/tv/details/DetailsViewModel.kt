@@ -4,10 +4,12 @@ import com.shieldstream.tv.strings.R as StringsR
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.shieldstream.tv.domain.AgeRatings
 import com.shieldstream.tv.domain.CatalogRepository
 import com.shieldstream.tv.domain.EpisodeTrackingRepository
 import com.shieldstream.tv.domain.ITHIL_ALLDEBRID
 import com.shieldstream.tv.domain.PrioritizeSourcesUseCase
+import com.shieldstream.tv.domain.ProfileRepository
 import com.shieldstream.tv.domain.RealDebridRepository
 import com.shieldstream.tv.domain.MyListRepository
 import com.shieldstream.tv.domain.NextEpisode
@@ -90,6 +92,8 @@ sealed interface DetailsUiState {
         val inMyList: Boolean = false,
         val following: Boolean = false,
         val ratings: TraktRatingsState = TraktRatingsState.Idle,
+        /** The title is above the Kids profile's age limit, or unrated under a limit. Set once details load. */
+        val ageBlocked: Boolean = false,
     ) : DetailsUiState {
         val isSeries: Boolean get() = details.item.type == MediaType.TV
 
@@ -124,6 +128,7 @@ class DetailsViewModel @Inject constructor(
     private val trakt: TraktRepository,
     private val myList: MyListRepository,
     private val tracking: EpisodeTrackingRepository,
+    profiles: ProfileRepository,
     private val texts: Texts,
     private val sourceProcessingDispatcher: SourceProcessingDispatcher,
 ) : ViewModel() {
@@ -141,6 +146,9 @@ class DetailsViewModel @Inject constructor(
     private var pendingNext: NextEpisode? = null
     private var requestedAtNs = 0L
     private var detailsLoaded = false
+
+    /** Read once: switching profile goes back through the picker and rebuilds Details. */
+    private val ageLimit: Int? = profiles.active.value.ageLimit
 
     init {
         load()
@@ -326,6 +334,7 @@ class DetailsViewModel @Inject constructor(
             val spanishFirst = settings.spanishFirst.first()
             val spanishOnly = settings.spanishOnlySources.first()
             val sourceExclusions = settings.sourceExclusions.first()
+            val ageBlocked = !AgeRatings.allows(ageLimit, details.minimumAge)
             if (request.playImmediately) {
                 updateContent {
                     it.copy(
@@ -335,6 +344,7 @@ class DetailsViewModel @Inject constructor(
                         spanishFirst = spanishFirst,
                         spanishOnly = spanishOnly,
                         sourceExclusions = sourceExclusions,
+                        ageBlocked = ageBlocked,
                     )
                 }
             } else {
@@ -345,6 +355,7 @@ class DetailsViewModel @Inject constructor(
                     spanishFirst = spanishFirst,
                     spanishOnly = spanishOnly,
                     sourceExclusions = sourceExclusions,
+                    ageBlocked = ageBlocked,
                 )
             }
             detailsLoaded = true
@@ -633,6 +644,17 @@ class DetailsViewModel @Inject constructor(
         includeExcluded: Boolean = false,
     ) {
         val c = content() ?: return
+        if (ageLimit != null) {
+            // The age rating arrives with the details; an autoplay handoff can get here first.
+            if (!detailsLoaded) {
+                updateContent { it.copy(pendingPlay = true) }
+                return
+            }
+            if (c.ageBlocked) {
+                updateContent { it.copy(message = ageBlockedMessage(c.details.minimumAge), pendingPlay = false) }
+                return
+            }
+        }
         val item = c.details.item
         val episode = c.selectedEpisode?.takeIf { c.isSeries }
         val key = if (episode != null) {
@@ -690,6 +712,10 @@ class DetailsViewModel @Inject constructor(
         )
         _events.tryEmit(DetailsEvent.OpenPlayer)
     }
+
+    private fun ageBlockedMessage(minimumAge: Int?): String = minimumAge
+        ?.let { texts.get(StringsR.string.details_age_blocked, it) }
+        ?: texts.get(StringsR.string.details_age_blocked_unrated)
 
     private fun content(): DetailsUiState.Content? = _uiState.value as? DetailsUiState.Content
 

@@ -6,11 +6,18 @@ import com.shieldstream.tv.domain.IthilLibraryRepository
 import com.shieldstream.tv.domain.ProfileRepository
 import com.shieldstream.tv.domain.SettingsRepository
 import com.shieldstream.tv.model.CatalogItem
+import com.shieldstream.tv.model.Lang
+import com.shieldstream.tv.model.AppLanguage
 import com.shieldstream.tv.model.MediaType
 import com.shieldstream.tv.model.Profile
 import com.shieldstream.tv.network.api.TmdbApi
 import com.shieldstream.tv.network.api.TorrentioApi
 import com.shieldstream.tv.network.dto.TmdbExternalIdsDto
+import com.shieldstream.tv.network.dto.TmdbReleaseDatesDto
+import com.shieldstream.tv.network.dto.TmdbReleaseDateDto
+import com.shieldstream.tv.network.dto.TmdbReleaseCountryDto
+import com.shieldstream.tv.network.dto.TmdbContentRatingsDto
+import com.shieldstream.tv.network.dto.TmdbContentRatingDto
 import com.shieldstream.tv.network.dto.TmdbMovieDetailDto
 import com.shieldstream.tv.network.dto.TmdbMovieDto
 import com.shieldstream.tv.network.dto.TmdbPaginated
@@ -149,5 +156,37 @@ class CatalogRepositoryItemTest {
         assertEquals(now, itemStore.items["MOVIE_1"]?.savedAt)
         coVerify(exactly = 1) { tmdb.movieDetails(1, any(), any(), any()) }
         coVerify(exactly = 0) { tmdb.movieDetails(2, any(), any(), any()) }
+    }
+
+    @Test
+    fun `details read the age rating from the same request`() = runTest {
+        val previous = Lang.current
+        Lang.current = AppLanguage.ES
+        try {
+            coEvery { tmdb.movieDetails(5, any(), any(), any()) } returns TmdbMovieDetailDto(
+                id = 5,
+                title = "Movie",
+                release_dates = TmdbReleaseDatesDto(
+                    listOf(
+                        TmdbReleaseCountryDto("ES", listOf(TmdbReleaseDateDto(certification = ""))),
+                        TmdbReleaseCountryDto("US", listOf(TmdbReleaseDateDto(certification = "PG-13"))),
+                    ),
+                ),
+            )
+            coEvery { tmdb.tvDetails(6, any(), any(), any()) } returns TmdbTvDetailDto(
+                id = 6,
+                name = "Show",
+                content_ratings = TmdbContentRatingsDto(
+                    listOf(TmdbContentRatingDto("US", "TV-MA"), TmdbContentRatingDto("ES", "16")),
+                ),
+            )
+
+            assertEquals(13, repository.getDetails(movie("5", "Movie")).minimumAge)
+            assertEquals(16, repository.getDetails(movie("6", "Show").copy(type = MediaType.TV)).minimumAge)
+            coVerify(exactly = 1) { tmdb.movieDetails(5, any(), match { "release_dates" in it }, any()) }
+            coVerify(exactly = 1) { tmdb.tvDetails(6, any(), match { "content_ratings" in it }, any()) }
+        } finally {
+            Lang.current = previous
+        }
     }
 }

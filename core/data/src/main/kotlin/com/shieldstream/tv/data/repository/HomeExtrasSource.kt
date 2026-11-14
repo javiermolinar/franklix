@@ -13,9 +13,7 @@ import com.shieldstream.tv.model.HomeFilter
 import com.shieldstream.tv.model.MediaType
 import com.shieldstream.tv.network.api.TmdbApi
 import com.shieldstream.tv.data.security.TokenStore
-import com.shieldstream.tv.network.dto.TmdbContentRatingsDto
 import com.shieldstream.tv.network.dto.TmdbImagesDto
-import com.shieldstream.tv.network.dto.TmdbReleaseDatesDto
 import com.shieldstream.tv.network.dto.TmdbSearchResultDto
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.async
@@ -170,7 +168,7 @@ class HomeExtrasSource @Inject constructor(
             logoUrl = pickLogo(d.images),
             genre = d.genres.firstOrNull()?.name,
             durationText = d.runtime?.takeIf { it > 0 }?.let { formatRuntime(it) },
-            certification = movieCertification(d.release_dates),
+            certification = certificationLabel(d.release_dates.minimumAge()),
         )
     }
 
@@ -195,7 +193,7 @@ class HomeExtrasSource @Inject constructor(
             logoUrl = pickLogo(d.images),
             genre = d.genres.firstOrNull()?.name,
             durationText = seasons.takeIf { it > 0 }?.let { if (it == 1) texts.get(StringsR.string.data_1_season) else texts.get(StringsR.string.data_season_count, it) },
-            certification = tvCertification(d.content_ratings),
+            certification = certificationLabel(d.content_ratings.minimumAge()),
         )
     }
 
@@ -422,30 +420,11 @@ class HomeExtrasSource @Inject constructor(
 
     private fun pickLogo(images: TmdbImagesDto?): String? = TmdbImages.logo(images, Lang.current.code)
 
-    private fun movieCertification(dates: TmdbReleaseDatesDto?): String? {
-        fun of(country: String) = dates?.results?.firstOrNull { it.iso_3166_1 == country }
-            ?.release_dates?.map { it.certification.trim() }?.firstOrNull { it.isNotEmpty() }
-        return certificationCountries().firstNotNullOfOrNull { normalizeCertification(of(it)) }
-    }
-
-    private fun tvCertification(ratings: TmdbContentRatingsDto?): String? {
-        fun of(country: String) = ratings?.results?.firstOrNull { it.iso_3166_1 == country }?.rating?.trim()
-        return certificationCountries().firstNotNullOfOrNull { normalizeCertification(of(it)) }
-    }
-
-    private fun certificationCountries() = if (Lang.isEnglish) listOf("US", "ES") else listOf("ES", "US")
-
-    private fun normalizeCertification(raw: String?): String? {
-        val c = raw?.trim()?.uppercase(Locale.ROOT)?.takeIf { it.isNotEmpty() } ?: return null
-        return when {
-            c == "A" || c == "TP" || c == "APTA" || c == "G" || c == "TV-G" || c == "TV-Y" || c == "ALL" -> texts.get(StringsR.string.data_all)
-            c.all { it.isDigit() } -> "$c+"
-            c == "PG" || c == "TV-Y7" || c == "TV-PG" -> "7+"
-            c == "PG-13" || c == "TV-14" -> "13+"
-            c == "R" -> "16+"
-            c == "NC-17" || c == "TV-MA" -> "18+"
-            else -> null
-        }
+    /** Badge text for the featured carousel: "ALL"/"TP" or "13+". */
+    private fun certificationLabel(minimumAge: Int?): String? = when (minimumAge) {
+        null -> null
+        0 -> texts.get(StringsR.string.data_all)
+        else -> "$minimumAge+"
     }
 
     private fun formatRuntime(minutes: Int): String {

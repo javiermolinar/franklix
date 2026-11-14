@@ -77,6 +77,10 @@ class ProfileEditViewModel @Inject constructor(
 
     fun setAvatar(index: Int) = edit { it.copy(profile = it.profile.copy(avatar = index), confirmDelete = false) }
 
+    fun setMaxAge(maxAge: Int?) = edit {
+        it.copy(profile = it.profile.copy(maxAge = maxAge), confirmDelete = false)
+    }
+
     fun setKids(kids: Boolean) = edit {
         it.copy(
             profile = it.profile.copy(

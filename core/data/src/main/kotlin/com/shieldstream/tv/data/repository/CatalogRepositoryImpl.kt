@@ -266,7 +266,7 @@ class CatalogRepositoryImpl @Inject constructor(
     override suspend fun getDetails(item: CatalogItem): CatalogDetails {
         val id = item.id.toIntOrNull() ?: return CatalogDetails(item)
         return if (item.type == MediaType.TV) {
-            val d = tmdb.tvDetails(id, key)
+            val d = tmdb.tvDetails(id, key, append = TV_DETAILS_APPEND)
             CatalogDetails(
                 item = item.copy(
                     imdbId = d.external_ids?.imdb_id ?: item.imdbId,
@@ -285,9 +285,10 @@ class CatalogRepositoryImpl @Inject constructor(
                 latestEpisode = d.last_episode_to_air?.toEpisode(),
                 nextEpisode = d.next_episode_to_air?.toEpisode(),
                 cast = d.credits?.cast.orEmpty().sortedBy { it.order }.take(20).map { it.toCastMember() },
+                minimumAge = d.content_ratings.minimumAge(),
             )
         } else {
-            val d = tmdb.movieDetails(id, key)
+            val d = tmdb.movieDetails(id, key, append = MOVIE_DETAILS_APPEND)
             CatalogDetails(
                 item = item.copy(
                     imdbId = d.imdb_id ?: item.imdbId,
@@ -301,6 +302,7 @@ class CatalogRepositoryImpl @Inject constructor(
                 genres = d.genres.map { it.name },
                 tagline = d.tagline?.takeIf { it.isNotBlank() },
                 cast = d.credits?.cast.orEmpty().sortedBy { it.order }.take(20).map { it.toCastMember() },
+                minimumAge = d.release_dates.minimumAge(),
             )
         }
     }
@@ -841,6 +843,10 @@ class CatalogRepositoryImpl @Inject constructor(
 }
 
 private const val HOME_CACHE_MS = 30 * 60 * 1000L
+
+// Details adds the age certifications to the same request, so the badge costs no extra call.
+private const val MOVIE_DETAILS_APPEND = "images,translations,credits,release_dates"
+private const val TV_DETAILS_APPEND = "images,external_ids,translations,credits,content_ratings"
 
 private const val AIRING_CACHE_MS = 6 * 60 * 60 * 1000L
 

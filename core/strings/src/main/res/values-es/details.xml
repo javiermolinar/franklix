@@ -80,4 +80,8 @@
     <string name="details_hold_ok_for_title_options">Mantén OK sobre un título para ver opciones</string>
     <string name="details_add_to_my_list">Añadir a Mi lista</string>
     <string name="details_remove_from_my_list">Quitar de Mi lista</string>
+    <string name="details_age_all">TP</string>
+    <string name="details_age_minimum">%1$d+</string>
+    <string name="details_age_blocked">No disponible en este perfil: no recomendada para menores de %1$d años.</string>
+    <string name="details_age_blocked_unrated">No disponible en este perfil: este título no tiene calificación por edad.</string>
 </resources>

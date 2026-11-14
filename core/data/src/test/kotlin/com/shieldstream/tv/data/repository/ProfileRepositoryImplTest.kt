@@ -77,6 +77,20 @@ class ProfileRepositoryImplTest {
     }
 
     @Test
+    fun `kids age limit persists across repository reloads`() {
+        val cleanup = mockk<ProfileDataCleaner>(relaxed = true)
+        val texts = mockk<Texts>(relaxed = true)
+        val repository = ProfileRepositoryImpl(context, cleanup, texts)
+        val profile = Profile(id = "kids-age", name = "Kids", avatar = 0, kids = true, maxAge = 7)
+        repository.save(profile)
+        repository.select(profile.id)
+
+        val reloaded = ProfileRepositoryImpl(context, cleanup, texts)
+        assertEquals(7, reloaded.active.value.maxAge)
+        assertEquals(7, reloaded.active.value.ageLimit)
+    }
+
+    @Test
     fun `frame rate matching preference persists across repository reloads`() {
         val cleanup = mockk<ProfileDataCleaner>(relaxed = true)
         val texts = mockk<Texts>(relaxed = true)

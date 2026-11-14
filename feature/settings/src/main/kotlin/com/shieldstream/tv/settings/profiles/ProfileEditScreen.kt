@@ -56,6 +56,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import kotlinx.coroutines.delay
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.shieldstream.tv.domain.AgeRatings
 import com.shieldstream.tv.model.AppLanguage
 import com.shieldstream.tv.model.Category
 import com.shieldstream.tv.model.Lang
@@ -201,12 +202,14 @@ fun ProfileEditScreen(
                         modifier = Modifier.padding(top = 6.dp),
                     )
                     Spacer(Modifier.height(12.dp))
+                    // The age-limit row appears below for Kids profiles and then owns the jump to Save.
+                    val lastRowDown = if (profile.kids) Modifier else Modifier.focusProperties { down = saveRequester }
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         OptionChip(
                             text = if (profile.kids) localizedStringResource(StringsR.string.settings_kids_profile_on) else localizedStringResource(StringsR.string.settings_kids_profile_off),
                             highlighted = profile.kids,
                             onClick = { viewModel.setKids(!profile.kids) },
-                            modifier = Modifier.focusProperties { down = saveRequester },
+                            modifier = lastRowDown,
                         )
                         OptionChip(
                             text = when {
@@ -225,7 +228,7 @@ fun ProfileEditScreen(
                                 }
                             },
                             onFocusLost = viewModel::cancelConfirmations,
-                            modifier = Modifier.focusProperties { down = saveRequester },
+                            modifier = lastRowDown,
                         )
                         OptionChip(
                             text = localizedStringResource(
@@ -235,7 +238,39 @@ fun ProfileEditScreen(
                             ),
                             highlighted = profile.hiddenCategories.isNotEmpty(),
                             onClick = { choosingCategories = true },
-                            modifier = Modifier.focusProperties { down = saveRequester },
+                            modifier = lastRowDown,
+                        )
+                    }
+                    if (profile.kids) {
+                        Spacer(Modifier.height(12.dp))
+                        Text(localizedStringResource(StringsR.string.settings_age_limit), color = ProfileMuted, fontSize = 16.sp)
+                        Spacer(Modifier.height(8.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            val toSave = Modifier.focusProperties { down = saveRequester }
+                            OptionChip(
+                                text = localizedStringResource(StringsR.string.settings_no_limit),
+                                highlighted = profile.maxAge == null,
+                                onClick = { viewModel.setMaxAge(null) },
+                                modifier = toSave,
+                            )
+                            AgeRatings.LIMITS.forEach { limit ->
+                                OptionChip(
+                                    text = if (limit == 0) {
+                                        localizedStringResource(StringsR.string.settings_age_limit_all)
+                                    } else {
+                                        localizedStringResource(StringsR.string.settings_age_limit_up_to, limit)
+                                    },
+                                    highlighted = profile.maxAge == limit,
+                                    onClick = { viewModel.setMaxAge(limit) },
+                                    modifier = toSave,
+                                )
+                            }
+                        }
+                        Text(
+                            localizedStringResource(StringsR.string.settings_age_limit_summary),
+                            color = ProfileMuted,
+                            fontSize = 14.sp,
+                            modifier = Modifier.padding(top = 6.dp),
                         )
                     }
                 }

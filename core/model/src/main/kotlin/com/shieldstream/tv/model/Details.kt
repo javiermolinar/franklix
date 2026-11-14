@@ -11,6 +11,8 @@ data class CatalogDetails(
     val latestEpisode: Episode? = null,
     val nextEpisode: Episode? = null,
     val cast: List<CastMember> = emptyList(),
+    /** Recommended minimum age from TMDB certifications; 0 is all audiences, null unknown. */
+    val minimumAge: Int? = null,
 )
 
 data class CastMember(

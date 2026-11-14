@@ -954,6 +954,13 @@ private fun MetaRow(details: CatalogDetails, state: DetailsUiState.Content) {
             Text(it, color = Color.White, style = MaterialTheme.typography.bodyMedium)
             Spacer(Modifier.width(14.dp))
         }
+        details.minimumAge?.let { age ->
+            Badge(
+                if (age == 0) localizedStringResource(StringsR.string.details_age_all)
+                else localizedStringResource(StringsR.string.details_age_minimum, age),
+            )
+            Spacer(Modifier.width(8.dp))
+        }
         (state.sources as? SourcesState.Ready)?.sources?.firstOrNull {
             !state.sourceExclusions.excludes(it) && (!state.spanishOnly || it.advertisesSpanishAudio)
         }?.let { best ->
@@ -982,6 +989,16 @@ private fun Badge(text: String) {
 private fun SourcesStatus(state: DetailsUiState.Content) {
     state.message?.let {
         Text(it, color = Grey, style = MaterialTheme.typography.bodyMedium)
+        return
+    }
+    if (state.ageBlocked) {
+        Text(
+            text = state.details.minimumAge
+                ?.let { localizedStringResource(StringsR.string.details_age_blocked, it) }
+                ?: localizedStringResource(StringsR.string.details_age_blocked_unrated),
+            color = AppColors.Warning,
+            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+        )
         return
     }
     when (val s = state.sources) {

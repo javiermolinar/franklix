@@ -80,4 +80,8 @@
     <string name="details_hold_ok_for_title_options">Hold OK on a title for options</string>
     <string name="details_add_to_my_list">Add to My list</string>
     <string name="details_remove_from_my_list">Remove from My list</string>
+    <string name="details_age_all">ALL</string>
+    <string name="details_age_minimum">%1$d+</string>
+    <string name="details_age_blocked">Not available on this profile: rated %1$d+.</string>
+    <string name="details_age_blocked_unrated">Not available on this profile: this title has no age rating.</string>
 </resources>

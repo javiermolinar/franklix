@@ -254,4 +254,8 @@
     <string name="update_installing_version">Press \"Install\" in Android\'s window. Franklix will close and reopen with %1$s.</string>
     <string name="update_latest_version">You have the latest version (%1$s). OK to check again.</string>
     <string name="update_new_version">New version: %1$s</string>
+    <string name="settings_age_limit">Age limit</string>
+    <string name="settings_age_limit_all">All ages only</string>
+    <string name="settings_age_limit_up_to">Up to %1$d</string>
+    <string name="settings_age_limit_summary">Titles rated above the limit, or without an age rating, can\'t be played on this profile.</string>
 </resources>
