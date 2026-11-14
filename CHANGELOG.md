@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.0.24] - 2026-11-14
+
+### Added
+
+- **Kids age limits:** Details shows TMDB age ratings, and Kids profiles can allow only all-ages titles or titles rated up to 7, 12, or 16. Blocked and unrated titles cannot start playback when a limit is set.
+- **Profile restrictions and source size controls:** Kids profiles get a simpler catalog without actor pages or the Calendar. Profiles can override the interface and catalog language, and sources can be limited to 1, 2, 4, 8, or 20 GB.
+- **Dialogue boost:** a per-profile Playback setting lifts speech frequencies and slightly reduces bass on supported decoded-audio outputs.
+
+### Improved
+
+- **Kids navigation:** the Settings icon no longer appears in the navigation rail for Kids profiles.
+
+### Fixed
+
+- **Profile language changes:** profile edits and selections are saved before an interface-language change restarts the app.
+
 ## [1.0.23] - 2026-11-14
 
 ### Added

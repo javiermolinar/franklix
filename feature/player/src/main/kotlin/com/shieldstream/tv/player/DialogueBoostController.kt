@@ -3,11 +3,14 @@ package com.shieldstream.tv.player
 import android.media.audiofx.AudioEffect
 import android.media.audiofx.Equalizer
 import android.util.Log
+import androidx.annotation.OptIn
 import androidx.media3.common.C
 import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 
 /** Applies a mild speech EQ to the current ExoPlayer audio session. */
+@OptIn(UnstableApi::class)
 internal class DialogueBoostController(
     private val player: ExoPlayer,
     private val onUnavailable: () -> Unit,
