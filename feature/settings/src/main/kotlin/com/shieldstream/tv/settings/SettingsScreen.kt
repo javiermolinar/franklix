@@ -122,6 +122,7 @@ fun SettingsScreen(
     val ithilUnlocked by viewModel.ithilUnlocked.collectAsStateWithLifecycle()
     val subtitleAppearance by viewModel.subtitleAppearance.collectAsStateWithLifecycle()
     val matchContentFrameRate by viewModel.matchContentFrameRate.collectAsStateWithLifecycle()
+    val dialogueBoost by viewModel.dialogueBoost.collectAsStateWithLifecycle()
     val ithilUnlockedMessage = localizedStringResource(StringsR.string.settings_ithil_unlocked)
     Box(
         Modifier
@@ -144,6 +145,8 @@ fun SettingsScreen(
                     onExperimentalSync = viewModel::setExperimentalSubtitleSync,
                     matchContentFrameRate = matchContentFrameRate,
                     onMatchContentFrameRate = viewModel::setMatchContentFrameRate,
+                    dialogueBoost = dialogueBoost,
+                    onDialogueBoost = viewModel::setDialogueBoost,
                     subtitleAppearance = subtitleAppearance,
                     onSubtitleAppearance = viewModel::setSubtitleAppearance,
                     onOpenSetup = onOpenSetup,
@@ -195,6 +198,8 @@ private fun SettingsList(
     onExperimentalSync: (Boolean) -> Unit,
     matchContentFrameRate: Boolean,
     onMatchContentFrameRate: (Boolean) -> Unit,
+    dialogueBoost: Boolean,
+    onDialogueBoost: (Boolean) -> Unit,
     subtitleAppearance: SubtitleAppearance,
     onSubtitleAppearance: (SubtitleAppearance) -> Unit,
     onOpenSetup: () -> Unit,
@@ -398,6 +403,7 @@ private fun SettingsList(
             item { SectionTitle("Idioma · Language") }
             item { LanguageCard(current = state.language, profileOverride = state.languageOverride, onApply = onLanguage) }
             item { SectionTitle(localizedStringResource(StringsR.string.settings_playback)) }
+            item { DialogueBoostCard(enabled = dialogueBoost, onChange = onDialogueBoost) }
             item { MatchContentFrameRateCard(enabled = matchContentFrameRate, onChange = onMatchContentFrameRate) }
             item { ExperimentalSyncCard(enabled = state.experimentalSubtitleSync, onChange = onExperimentalSync) }
             item {
@@ -1086,6 +1092,45 @@ private fun EpisodeNotificationsCard(viewModel: SettingsViewModel = hiltViewMode
             }
             Spacer(Modifier.width(24.dp))
             Row(Modifier.background(Color.White.copy(alpha = 0.08f), AppShapes.Pill).padding(4.dp)) {
+                SegmentOption(localizedStringResource(StringsR.string.settings_on), selected = enabled)
+                SegmentOption(localizedStringResource(StringsR.string.settings_off_9847b4), selected = !enabled)
+            }
+        }
+    }
+}
+
+@Composable
+private fun DialogueBoostCard(enabled: Boolean, onChange: (Boolean) -> Unit) {
+    FocusCard(
+        onClick = { onChange(!enabled) },
+        modifier = Modifier.onPreviewKeyEvent { event ->
+            if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+            when (event.key) {
+                Key.DirectionLeft -> { onChange(true); true }
+                Key.DirectionRight -> { onChange(false); true }
+                else -> false
+            }
+        },
+    ) { _ ->
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    localizedStringResource(StringsR.string.settings_dialogue_boost),
+                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
+                    color = Color.White,
+                )
+                Text(
+                    localizedStringResource(StringsR.string.settings_dialogue_boost_explanation),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Muted,
+                )
+            }
+            Spacer(Modifier.width(24.dp))
+            Row(
+                Modifier
+                    .background(Color.White.copy(alpha = 0.08f), AppShapes.Pill)
+                    .padding(4.dp),
+            ) {
                 SegmentOption(localizedStringResource(StringsR.string.settings_on), selected = enabled)
                 SegmentOption(localizedStringResource(StringsR.string.settings_off_9847b4), selected = !enabled)
             }

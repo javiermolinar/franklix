@@ -77,6 +77,20 @@ class ProfileRepositoryImplTest {
     }
 
     @Test
+    fun `dialogue boost preference persists across repository reloads`() {
+        val cleanup = mockk<ProfileDataCleaner>(relaxed = true)
+        val texts = mockk<Texts>(relaxed = true)
+        val repository = ProfileRepositoryImpl(context, cleanup, texts)
+        val profile = Profile(id = "dialogue", name = "Dialogue", avatar = 0, dialogueBoost = true)
+        repository.save(profile)
+        repository.select(profile.id)
+
+        val reloaded = ProfileRepositoryImpl(context, cleanup, texts)
+        assertTrue(reloaded.active.value.dialogueBoost)
+        assertFalse(Profile(id = "default", name = "Default", avatar = 0).dialogueBoost)
+    }
+
+    @Test
     fun `kids age limit persists across repository reloads`() {
         val cleanup = mockk<ProfileDataCleaner>(relaxed = true)
         val texts = mockk<Texts>(relaxed = true)

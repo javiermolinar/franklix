@@ -113,6 +113,9 @@ class PlayerViewModel @Inject constructor(
     private val _notice = MutableStateFlow<String?>(null)
     val notice: StateFlow<String?> = _notice.asStateFlow()
 
+    private var dialogueBoostEnabled = profiles.active.value.dialogueBoost
+    private var dialogueBoostController: DialogueBoostController? = null
+
     private val playbackSnapshot = holder.playback.value
     private val queueSnapshot = playbackSnapshot?.sources.orEmpty()
     private val mediaSnapshot = playbackSnapshot?.media
@@ -197,6 +200,25 @@ class PlayerViewModel @Inject constructor(
     val activeExternal: StateFlow<ActiveExternalSubtitle?> = subtitleCoordinator.activeExternal
     val subtitleTiming: StateFlow<SubtitleTiming> = subtitleCoordinator.subtitleTiming
     val syncStatus: StateFlow<SyncStatus> = subtitleCoordinator.syncStatus
+
+    init {
+        viewModelScope.launch {
+            settings.dialogueBoost.collect { enabled ->
+                dialogueBoostEnabled = enabled
+                dialogueBoostController?.setEnabled(enabled)
+            }
+        }
+    }
+
+    private fun onDialogueBoostUnavailable() {
+        _notice.value = texts.get(StringsR.string.player_dialogue_boost_unavailable)
+    }
+
+    private fun releasePlayer(player: ExoPlayer) {
+        dialogueBoostController?.close()
+        dialogueBoostController = null
+        player.release()
+    }
 
     fun start() {
         if (started) return
@@ -401,7 +423,7 @@ class PlayerViewModel @Inject constructor(
                 saveProgress()
                 resumePositionMs = player.currentPosition
             }
-            player.release()
+            releasePlayer(player)
             if (_player.value === player) _player.value = null
             resolvedUrl = null
             playFrom(action.index)
@@ -479,7 +501,7 @@ class PlayerViewModel @Inject constructor(
         _player.value?.let { p ->
             resumePositionMs = p.currentPosition
             trackSelectionToRestore = p.trackSelectionParameters
-            p.release()
+            releasePlayer(p)
         }
         _player.value = null
         _videoInfo.value = null
@@ -529,6 +551,9 @@ class PlayerViewModel @Inject constructor(
         if (!playbackVisible || generation != playerGeneration) {
             player.release()
             return
+        }
+        dialogueBoostController = DialogueBoostController(player, ::onDialogueBoostUnavailable).also { controller ->
+            if (dialogueBoostEnabled) controller.setEnabled(true)
         }
         _videoInfo.value = null
         var activeDecoderName: String? = null
@@ -667,7 +692,7 @@ class PlayerViewModel @Inject constructor(
         earlyPreparationPending = null
         saveProgress()
         scrobble(ScrobbleAction.STOP)
-        _player.value?.release()
+        _player.value?.let(::releasePlayer)
         _player.value = null
         _videoInfo.value = null
         super.onCleared()

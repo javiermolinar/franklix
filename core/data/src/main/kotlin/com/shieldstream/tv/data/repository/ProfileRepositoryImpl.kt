@@ -139,6 +139,7 @@ class ProfileRepositoryImpl @Inject constructor(
         val subtitleApplyEmbeddedStyles: Boolean? = null,
         val experimentalSubtitleSync: Boolean? = null,
         val matchContentFrameRate: Boolean? = null,
+        val dialogueBoost: Boolean? = null,
         val maxAge: Int? = null,
     ) {
         fun toProfile(legacyFirst: Boolean, legacyOnly: Boolean, legacyHidden: Set<String>) = Profile(
@@ -158,6 +159,7 @@ class ProfileRepositoryImpl @Inject constructor(
             ).normalized(),
             experimentalSubtitleSync = experimentalSubtitleSync ?: true,
             matchContentFrameRate = matchContentFrameRate ?: true,
+            dialogueBoost = dialogueBoost ?: false,
             maxAge = maxAge,
         )
 
@@ -182,6 +184,7 @@ class ProfileRepositoryImpl @Inject constructor(
                 subtitleApplyEmbeddedStyles = p.subtitleAppearance.applyEmbeddedStyles,
                 experimentalSubtitleSync = p.experimentalSubtitleSync,
                 matchContentFrameRate = p.matchContentFrameRate,
+                dialogueBoost = p.dialogueBoost,
                 maxAge = p.maxAge,
             )
         }

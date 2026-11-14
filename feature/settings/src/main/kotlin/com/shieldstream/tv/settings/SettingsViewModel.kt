@@ -250,6 +250,13 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { settings.setMatchContentFrameRate(enabled) }
     }
 
+    val dialogueBoost: StateFlow<Boolean> = settings.dialogueBoost
+        .stateIn(viewModelScope, SharingStarted.Eagerly, profiles.active.value.dialogueBoost)
+
+    fun setDialogueBoost(enabled: Boolean) {
+        viewModelScope.launch { settings.setDialogueBoost(enabled) }
+    }
+
     val subtitleAppearance: StateFlow<SubtitleAppearance> = settings.subtitleAppearance
         .stateIn(viewModelScope, SharingStarted.Eagerly, SubtitleAppearance())
 

@@ -244,6 +244,7 @@ class PlayerViewModelTest {
             every { this@mockk.maxBufferSeconds } returns bufferSecondsFlow
             every { seekThumbnails } returns flowOf(false)
             every { autoNextEpisode } returns flowOf(autoNext)
+            every { dialogueBoost } returns flowOf(false)
         }
         val profile = Profile(
             id = "test",

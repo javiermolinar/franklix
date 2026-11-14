@@ -122,6 +122,8 @@
     <string name="settings_items_per_home_row_explanation">Maximum items in each row. Continue Watching always shows every item.</string>
     <string name="settings_experimental_subtitle_sync">Experimental subtitle sync</string>
     <string name="settings_sync_demux_explanation">Uses embedded subtitles to align downloads. Turn off on slow devices; the best subtitle still downloads and attaches automatically.</string>
+    <string name="settings_dialogue_boost">Dialogue boost</string>
+    <string name="settings_dialogue_boost_explanation">Boosts speech frequencies and slightly reduces bass. Works with decoded audio; availability depends on the audio output.</string>
     <string name="settings_match_content_frame_rate">Match content frame rate</string>
     <string name="settings_match_content_frame_rate_explanation">Reduces playback judder. The screen may briefly go black when playback starts or the source changes.</string>
     <string name="settings_playback">Playback</string>

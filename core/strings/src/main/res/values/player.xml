@@ -14,6 +14,7 @@
     <string name="player_back_to_return_to_audio_subtitles">Back to return to Audio &amp; subtitles</string>
     <string name="player_back_to_return_to_the_movie">Back to return to the movie</string>
     <string name="player_no_audio_tracks">No audio tracks</string>
+    <string name="player_dialogue_boost_unavailable">Dialogue boost isn’t available for this audio output</string>
     <string name="player_subtitles">Subtitles</string>
     <string name="player_language">Language</string>
     <string name="player_external_subtitles">External subtitles</string>

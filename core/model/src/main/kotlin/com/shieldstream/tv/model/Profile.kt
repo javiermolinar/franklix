@@ -16,6 +16,7 @@ data class Profile(
     val subtitleAppearance: SubtitleAppearance = SubtitleAppearance(),
     val experimentalSubtitleSync: Boolean = true,
     val matchContentFrameRate: Boolean = true,
+    val dialogueBoost: Boolean = false,
     /** Highest TMDB minimum age a Kids profile may play; null is no limit. Ignored for other profiles. */
     val maxAge: Int? = null,
 ) {

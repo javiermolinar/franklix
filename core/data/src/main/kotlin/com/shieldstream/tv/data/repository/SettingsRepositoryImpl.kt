@@ -120,6 +120,13 @@ class SettingsRepositoryImpl @Inject constructor(
         profiles.save(profiles.active.value.copy(matchContentFrameRate = enabled))
     }
 
+    override val dialogueBoost: Flow<Boolean> = profiles.active
+        .map { it.dialogueBoost }.distinctUntilChanged()
+
+    override suspend fun setDialogueBoost(enabled: Boolean) {
+        profiles.save(profiles.active.value.copy(dialogueBoost = enabled))
+    }
+
     private val autoNextFlow = MutableStateFlow(prefs.getBoolean(KEY_AUTO_NEXT, true))
     override val autoNextEpisode: Flow<Boolean> = autoNextFlow
 

@@ -58,6 +58,9 @@ interface SettingsRepository {
     val matchContentFrameRate: Flow<Boolean>
     suspend fun setMatchContentFrameRate(enabled: Boolean)
 
+    val dialogueBoost: Flow<Boolean>
+    suspend fun setDialogueBoost(enabled: Boolean)
+
     val autoNextEpisode: Flow<Boolean>
     suspend fun setAutoNextEpisode(enabled: Boolean)
 
